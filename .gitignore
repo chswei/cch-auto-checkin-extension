@@ -1,0 +1,44 @@
+# Chrome Extension 開發相關
+*.crx
+*.pem
+key.pem
+
+# 日誌文件
+*.log
+
+# IDE/編輯器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系統文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node.js (如果有用到)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 臨時文件
+*.tmp
+*.temp
+temp/
+
+# 備份文件
+*.bak
+*.backup
+*~
+
+# 個人設定或敏感資料
+config.local.js
+secrets.js
+*.env
+.env.local
+
+# 打包或建置產物
+dist/
+build/

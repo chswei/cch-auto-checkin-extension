@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "彰基醫院自動打卡系統",
+  "version": "1.0.0",
+  "description": "自動化彰化基督教醫院打卡系統，支援值班和請假日期設定",
+  
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "彰基自動打卡"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["https://dpt.cch.org.tw/EIP/*"],
+      "js": ["utils.js", "content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  
+  "web_accessible_resources": [
+    {
+      "resources": ["utils.js", "dialog-override.js"],
+      "matches": ["https://dpt.cch.org.tw/*"]
+    }
+  ],
+  
+  "host_permissions": [
+    "https://dpt.cch.org.tw/*"
+  ]
+}

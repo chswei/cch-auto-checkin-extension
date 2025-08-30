@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>彰基自動打卡系統</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>彰基自動打卡系統</h1>
+            <p class="subtitle">選擇值班日與請假日，系統將自動產生排班表</p>
+        </header>
+
+        <main>
+            <!-- 月份選擇 -->
+            <div class="month-selector">
+                <button id="prevMonth" class="month-btn">&lt;</button>
+                <h2 id="currentMonth">2025年8月</h2>
+                <button id="nextMonth" class="month-btn">&gt;</button>
+            </div>
+
+            <!-- 雙日曆區域 -->
+            <div class="calendars-container">
+                <!-- 值班日選擇 -->
+                <div class="calendar-section">
+                    <h3 class="calendar-title">
+                        <span class="indicator on-call"></span>
+                        選擇值班日
+                    </h3>
+                    <div id="onCallCalendar" class="calendar"></div>
+                </div>
+
+                <!-- 請假日選擇 -->
+                <div class="calendar-section">
+                    <h3 class="calendar-title">
+                        <span class="indicator leave"></span>
+                        選擇請假日
+                    </h3>
+                    <div id="leaveCalendar" class="calendar"></div>
+                </div>
+            </div>
+
+            <!-- 預覽區域 -->
+            <div class="preview-section">
+                <h3>排班預覽</h3>
+                <div id="schedulePreview" class="preview-content">
+                    請先選擇值班日和請假日
+                </div>
+            </div>
+
+            <!-- 控制按鈕 -->
+            <div class="controls">
+                <button id="clearAll" class="btn btn-secondary">清除所有選擇</button>
+                <button id="startAutofill" class="btn btn-primary" disabled>開始自動打卡</button>
+            </div>
+
+            <!-- 進度顯示 -->
+            <div id="progressSection" class="progress-section" style="display: none;">
+                <div class="progress-header">
+                    <h3>執行進度</h3>
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                </div>
+                <div id="progressLog" class="progress-log"></div>
+                <button id="stopProcess" class="btn btn-danger">停止執行</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>
