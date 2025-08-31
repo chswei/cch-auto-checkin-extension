@@ -304,7 +304,7 @@ class PopupController {
                 this.startAutofillBtn.disabled = true;
             }
         } catch (error) {
-            console.error('檢查頁面失敗:', error);
+            // 頁面檢查失敗，靜默處理
         }
     }
     
@@ -368,7 +368,6 @@ class PopupController {
             
         } catch (error) {
             this.logMessage(`錯誤: ${error.message}`, 'error');
-            console.error('自動打卡執行錯誤:', error);
         }
         
         this.isExecuting = false;

@@ -1,47 +1,15 @@
 // 彰基醫院自動打卡系統 - Content Script
 // 處理網頁 DOM 操作和自動化打卡流程
 
-// 使用 eval 或其他方式繞過 CSP 限制
-console.log('[彰基自動打卡] Content script 載入');
-
-// 方法1: 使用外部腳本文件
+// 注入外部腳本繞過 CSP 限制
 function injectExternalScript() {
     const script = document.createElement('script');
     script.src = chrome.runtime.getURL('dialog-override.js');
     (document.head || document.documentElement).appendChild(script);
-    console.log('[彰基自動打卡] 外部腳本注入完成');
 }
 
-// 方法2: 監聽並攔截原生對話框事件（備用）
-function setupDialogInterception() {
-    // 監聽頁面中的所有點擊事件，在送出按鈕被點擊後處理對話框
-    document.addEventListener('click', function(event) {
-        if (event.target.textContent === '送出' || event.target.innerText === '送出') {
-            console.log('[彰基自動打卡] 檢測到送出按鈕點擊，準備處理對話框');
-            
-            // 延遲處理對話框
-            setTimeout(() => {
-                // 嘗試找到並點擊確定按鈕
-                const confirmButton = document.querySelector('button:contains("確定")') || 
-                                    document.querySelector('button:contains("OK")') ||
-                                    document.querySelector('[role="button"]:contains("確定")');
-                
-                if (confirmButton) {
-                    confirmButton.click();
-                    console.log('[彰基自動打卡] 自動點擊確定按鈕');
-                }
-            }, 500);
-        }
-    }, true);
-}
-
-// 嘗試外部腳本注入
-try {
-    injectExternalScript();
-} catch (error) {
-    console.log('[彰基自動打卡] 外部腳本注入失敗，使用備用方案');
-    setupDialogInterception();
-}
+// 注入外部腳本
+injectExternalScript();
 
 class AutoPunchInHandler {
     constructor() {
@@ -51,10 +19,6 @@ class AutoPunchInHandler {
         this.setupMessageListener();
         this.maxRetries = 3; // 最大重試次數
         this.retryDelay = 2000; // 重試延遲（毫秒）
-        this.confirmOverrideSetup = false; // 防止重複設置對話框覆寫
-        
-        // 初始化時設置對話框覆寫（只設置一次）
-        this.setupConfirmOverride();
         
         // 班別對應表 - 根據實際網頁選項更新
         this.SHIFT_MAPPING = {
@@ -265,7 +229,6 @@ class AutoPunchInHandler {
             
         } catch (error) {
             this.logMessage(`執行過程發生錯誤: ${error.message}`, 'error');
-            console.error('自動打卡錯誤:', error);
             this.notifyComplete(false, error.message);
         } finally {
             this.isRunning = false;
@@ -589,9 +552,6 @@ class AutoPunchInHandler {
     async selectOptionFromList(options, targetText) {
         this.logMessage(`在 ${options.length} 個選項中查找: "${targetText}"`, 'info');
         
-        // 記錄所有選項用於調試
-        const optionTexts = options.map((opt, index) => `${index}: "${opt.textContent?.trim() || '[空白]'}"`);
-        this.logMessage(`所有選項: ${optionTexts.join(', ')}`, 'info');
         
         // 首先嘗試精確匹配
         for (const option of options) {
@@ -711,7 +671,6 @@ class AutoPunchInHandler {
             }
             
             if (!found) {
-                // 列出所有可用選項供調試
                 const availableOptions = Array.from(options).map(opt => 
                     opt.textContent?.trim() || ''
                 ).filter(text => text).join(', ');
@@ -821,7 +780,6 @@ class AutoPunchInHandler {
             }
             
             if (!found) {
-                // 列出所有可用選項供調試
                 const availableOptions = Array.from(matOptions).map(opt => 
                     opt.textContent?.trim() || ''
                 ).filter(text => text).join(', ');
@@ -1082,7 +1040,6 @@ class AutoPunchInHandler {
             }
             
             if (!submitButton) {
-                // 列出所有可用按鈕供調試
                 const availableButtons = Array.from(buttons).map(btn => 
                     `"${btn.textContent ? btn.textContent.trim() : '[空白]'}"`
                 ).join(', ');
@@ -1170,7 +1127,6 @@ class AutoPunchInHandler {
     }
     
     logMessage(message, type = 'info') {
-        console.log(`[彰基自動打卡] ${message}`);
         
         this.sendMessageSafely({
             type: 'LOG_MESSAGE',
@@ -1194,13 +1150,11 @@ class AutoPunchInHandler {
             chrome.runtime.sendMessage(message, (response) => {
                 // 檢查是否有錯誤
                 if (chrome.runtime.lastError) {
-                    // popup 已關閉或不存在，這是正常情況，不需要記錄
-                    // console.log('Popup not available:', chrome.runtime.lastError.message);
+                    // popup 已關閉或不存在，這是正常情況
                 }
             });
         } catch (error) {
-            // 忽略通信錯誤，因為這通常發生在 popup 關閉時
-            // console.log('Message sending failed:', error.message);
+            // 忽略通信錯誤
         }
     }
 }
@@ -1216,7 +1170,5 @@ if (document.readyState === 'loading') {
 
 // 檢查是否在正確的頁面
 if (window.location.href.includes('dpt.cch.org.tw/EIP')) {
-    console.log('彰基自動打卡擴充功能已載入');
 } else {
-    console.log('不在彰基EIP頁面，自動打卡功能暫時停用');
 }
