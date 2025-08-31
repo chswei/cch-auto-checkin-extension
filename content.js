@@ -110,13 +110,15 @@ class AutoPunchInHandler {
                 
                 await this.processSingleDay(workDay);
                 
-                // 每天處理完後稍作等待
-                await this.sleep(1000);
+                // 移除固定等待，直接進行下一天處理以提升速度
             }
             
             this.logMessage('所有打卡記錄處理完成！', 'success');
             this.updateProgress(this.workDays.length, this.workDays.length);
             this.notifyComplete(true);
+            
+            // 確保所有處理完全結束，停止任何後續操作
+            this.logMessage('自動打卡系統已停止運行', 'info');
             
         } catch (error) {
             this.logMessage(`執行過程發生錯誤: ${error.message}`, 'error');
@@ -131,10 +133,7 @@ class AutoPunchInHandler {
         
         while (retryCount < this.maxRetries) {
             try {
-                // 0. 等待頁面載入完成
-                await this.waitForElement('table tbody tr', 5000);
-                
-                // 1. 找到對應日期的編輯按鈕
+                // 直接查找編輯按鈕（表格已載入，無需重複等待）
                 const editButton = await this.findEditButtonByDate(workDay.date);
                 if (!editButton) {
                     throw new Error(`找不到 ${workDay.date} 號的編輯按鈕`);
@@ -143,6 +142,9 @@ class AutoPunchInHandler {
                 // 2. 點擊編輯按鈕
                 this.logMessage(`點擊 ${workDay.date} 號的編輯按鈕`, 'info');
                 editButton.click();
+                
+                // 2.5. 等待1秒讓對話框完全載入
+                await this.sleep(1000);
                 
                 // 3. 等待對話框出現並驗證
                 const dialog = await this.waitForDialogWithValidation(5000);
@@ -180,74 +182,28 @@ class AutoPunchInHandler {
     }
     
     async findEditButtonByDate(date) {
-        const dateStr = String(date).padStart(2, '0');
-        const currentMonth = new Date().getMonth() + 1;
-        const currentYear = new Date().getFullYear();
-        const targetDateText = `${String(currentMonth).padStart(2, '0')}/${dateStr}`;
-        const fullDateText = `${currentYear}/${targetDateText}`;
-        
-        this.logMessage(`尋找日期 ${targetDateText} 的編輯按鈕`, 'info');
+        this.logMessage(`尋找第 ${date} 天的編輯按鈕`, 'info');
         
         try {
-            // 等待表格載入完成
-            await this.sleep(1000); // 確保頁面穩定
+            // 智能等待Angular Material表格載入完成
+            const tableFound = await this.waitForCondition(() => {
+                const matRow = document.querySelector('mat-row');
+                return matRow !== null;
+            }, 5000, 100, 'Angular Material表格載入');
             
-            // 嘗試多種選擇器找到表格
-            let table = document.querySelector('table tbody');
-            if (!table) {
-                table = document.querySelector('.mat-table tbody');
-            }
-            if (!table) {
-                table = document.querySelector('[role="table"]');
-            }
-            if (!table) {
-                // 最後嘗試找到任何包含行的容器
-                const allRows = document.querySelectorAll('tr[role="row"], tr');
-                if (allRows.length > 0) {
-                    table = allRows[0].parentElement;
-                }
-            }
-            
-            if (!table) {
+            if (!tableFound) {
                 throw new Error('找不到打卡記錄表格');
             }
             
-            // 獲取所有行
-            const rows = document.querySelectorAll('tr, [role="row"]');
-            this.logMessage(`找到 ${rows.length} 個表格行`, 'info');
+            // 超高效查找：第 N 天 = Angular Material表格第 N 行的第一個按鈕
+            const editButton = document.querySelector(`mat-row:nth-child(${date}) button`);
             
-            // 優先精確匹配
-            for (const row of rows) {
-                const rowText = row.textContent || '';
-                
-                // 檢查多種日期格式
-                if (rowText.includes(targetDateText) || 
-                    rowText.includes(fullDateText) ||
-                    rowText.includes(`${dateStr}日`) ||
-                    rowText.includes(`第${dateStr}天`)) {
-                    
-                    this.logMessage(`找到包含日期 ${targetDateText} 的行`, 'info');
-                    
-                    // 查找該行的編輯按鈕
-                    const button = await this.findEditButtonInRow(row);
-                    if (button) {
-                        this.logMessage(`成功找到 ${targetDateText} 的編輯按鈕`, 'success');
-                        return button;
-                    }
-                }
+            if (!editButton) {
+                throw new Error(`找不到第 ${date} 天的編輯按鈕`);
             }
             
-            // 備用方法：按位置查找（第N行對應第N天）
-            if (rows.length >= date) {
-                const targetRow = rows[date - 1]; // 0-based index
-                const button = await this.findEditButtonInRow(targetRow);
-                if (button) {
-                    this.logMessage(`使用位置匹配找到第 ${date} 天的編輯按鈕`, 'success');
-                    return button;
-                }
-            }
-            
-            throw new Error(`未找到 ${targetDateText} 的編輯按鈕`);
+            this.logMessage(`成功找到第 ${date} 天的編輯按鈕`, 'success');
+            return editButton;
             
         } catch (error) {
             this.logMessage(`查找編輯按鈕失敗: ${error.message}`, 'error');
@@ -255,73 +211,6 @@ class AutoPunchInHandler {
         }
     }
     
-    async findEditButtonInRow(row) {
-        // 查找該行中的所有按鈕
-        const buttons = row.querySelectorAll('button');
-        
-        for (const button of buttons) {
-            // 多種方式檢查是否為編輯按鈕
-            const buttonText = button.textContent?.trim().toLowerCase() || '';
-            const ariaLabel = button.getAttribute('aria-label')?.toLowerCase() || '';
-            const title = button.title?.toLowerCase() || '';
-            
-            // 檢查圖標
-            const img = button.querySelector('img');
-            const icon = button.querySelector('i, svg, mat-icon');
-            
-            const hasEditIcon = img && (
-                img.textContent === 'edit' || 
-                img.alt === 'edit' ||
-                img.src?.includes('edit')
-            );
-            
-            const hasEditMaterialIcon = icon && (
-                icon.textContent === 'edit' ||
-                icon.className?.includes('edit') ||
-                icon.innerHTML?.includes('edit')
-            );
-            
-            // 檢查文字內容
-            const hasEditText = buttonText === 'edit' || 
-                              buttonText === '編輯' || 
-                              buttonText === '修改' ||
-                              buttonText.includes('edit');
-            
-            // 檢查屬性
-            const hasEditAttribute = ariaLabel.includes('edit') || 
-                                   ariaLabel.includes('編輯') ||
-                                   title.includes('edit') ||
-                                   title.includes('編輯');
-            
-            // 檢查是否為第一個按鈕（通常是編輯按鈕）
-            const isFirstButton = button === row.querySelector('button');
-            
-            // 檢查按鈕類名
-            const hasEditClass = button.className?.includes('edit') || 
-                               button.className?.includes('modify');
-            
-            if (hasEditIcon || hasEditMaterialIcon || hasEditText || 
-                hasEditAttribute || isFirstButton || hasEditClass) {
-                // 檢查按鈕是否可點擊
-                if (!button.disabled && button.offsetParent !== null) {
-                    this.logMessage('找到編輯按鈕', 'info');
-                    return button;
-                }
-            }
-        }
-        
-        // 如果沒找到按鈕，嘗試查找可點擊的圖標或鏈接
-        const clickableElements = row.querySelectorAll('a, [role="button"], [onclick]');
-        for (const element of clickableElements) {
-            const text = element.textContent?.toLowerCase() || '';
-            if (text.includes('edit') || text.includes('編輯')) {
-                this.logMessage('找到可點擊的編輯元素', 'info');
-                return element;
-            }
-        }
-        
-        return null;
-    }
     
     async fillPunchInData(dialog, workDay) {
         const timeSetting = this.TIME_SETTINGS[workDay.shift];
@@ -333,12 +222,11 @@ class AutoPunchInHandler {
         
         // 1. 設定班別（跳過部門選擇，保持預設值）
         await this.selectShift(dialog, workDay.shift);
-        await this.sleep(500);
-        
+        // 移除固定延遲，直接進行下一步
         
         // 2. 設定簽退時間
         await this.setCheckOutTime(dialog, timeSetting.checkOut, timeSetting.isOvernight);
-        await this.sleep(500);
+        // 移除固定延遲，提升響應速度
         
         this.logMessage(`已完成 ${workDay.shift} 班別的所有設定`, 'info');
     }
@@ -364,7 +252,7 @@ class AutoPunchInHandler {
                 shiftSelect.dispatchEvent(new Event('change', { bubbles: true }));
                 
                 this.logMessage(`成功選擇班別: ${shiftName}`, 'success');
-                await this.sleep(500);
+                await this.sleep(200);
                 return;
             }
             
@@ -385,7 +273,7 @@ class AutoPunchInHandler {
             }
             
             this.logMessage(`成功選擇班別: ${shiftName}`, 'success');
-            await this.sleep(500);
+            await this.sleep(200);
             
         } catch (error) {
             this.logMessage(`選擇班別失敗: ${error.message}`, 'error');
@@ -433,7 +321,6 @@ class AutoPunchInHandler {
                 // 跳過無效的選擇器
                 continue;
             }
-            await this.sleep(100);
         }
         
         this.logMessage(`總共找到 ${allOptions.length} 個去重後的選項`, 'info');
@@ -450,7 +337,7 @@ class AutoPunchInHandler {
             if (optionText === targetText) {
                 this.logMessage(`精確匹配: "${optionText}"`, 'info');
                 option.click();
-                await this.sleep(500);
+                await this.sleep(200);
                 return true;
             }
         }
@@ -461,7 +348,7 @@ class AutoPunchInHandler {
             if (optionText.includes(targetText) || targetText.includes(optionText)) {
                 this.logMessage(`包含匹配: "${optionText}"`, 'info');
                 option.click();
-                await this.sleep(500);
+                await this.sleep(200);
                 return true;
             }
         }
@@ -478,7 +365,7 @@ class AutoPunchInHandler {
             // 如果是跨夜班別，需要先設定簽退日期
             if (isOvernight) {
                 await this.setCheckOutDate(dialog);
-                await this.sleep(500);
+                await this.sleep(200);
             }
             
             // 查找簽退時間的 mat-select 元素
@@ -502,7 +389,7 @@ class AutoPunchInHandler {
                 
                 // 設定簽退小時
                 await this.selectMatSelectValue(hourSelect, timeSettings.hour, '簽退小時');
-                await this.sleep(500);
+                await this.sleep(200);
                 
                 // 設定簽退分鐘
                 await this.selectMatSelectValue(minuteSelect, timeSettings.minute, '簽退分鐘');
@@ -538,8 +425,20 @@ class AutoPunchInHandler {
             this.logMessage(`${fieldName}: 點擊打開 combobox`, 'info');
             combobox.click();
             
-            // 等待選項出現
-            await this.sleep(1000);
+            // 智能等待選項出現並完全載入
+            await this.sleep(300); // 先等待下拉選單展開
+            
+            const optionsAppeared = await this.waitForCondition(() => {
+                const options = document.querySelectorAll('option');
+                return options.length > 5; // 確保載入足夠多的選項
+            }, 5000, 100, `${fieldName} 選項出現`);
+            
+            if (!optionsAppeared) {
+                throw new Error(`${fieldName}: 選項未在預期時間內出現`);
+            }
+            
+            // 額外等待確保選項完全渲染
+            await this.sleep(200);
             
             // 查找 option 選項（用一般的 option 標籤）
             const options = document.querySelectorAll('option');
@@ -563,13 +462,17 @@ class AutoPunchInHandler {
             
             if (!found) {
                 const availableOptions = Array.from(options).map(opt => 
-                    opt.textContent?.trim() || ''
-                ).filter(text => text).join(', ');
-                throw new Error(`${fieldName}: 找不到值 "${value}" (嘗試: ${searchValues.join(', ')})。可用選項: [${availableOptions}]`);
+                    `"${opt.textContent?.trim() || ''}"`
+                ).filter(text => text !== '""').join(', ');
+                this.logMessage(`${fieldName}: 查找失敗詳情`, 'error');
+                this.logMessage(`- 目標值: "${value}"`, 'error');
+                this.logMessage(`- 嘗試匹配: [${searchValues.map(v => `"${v}"`).join(', ')}]`, 'error');
+                this.logMessage(`- 可用選項: [${availableOptions}]`, 'error');
+                throw new Error(`${fieldName}: 找不到值 "${value}"。請查看日誌了解詳情。`);
             }
             
             this.logMessage(`${fieldName}: 成功設定為 "${paddedValue}"`, 'success');
-            await this.sleep(500);
+            await this.sleep(200);
             
         } catch (error) {
             this.logMessage(`${fieldName}: 設定失敗: ${error.message}`, 'error');
@@ -623,33 +526,30 @@ class AutoPunchInHandler {
                 matSelect.click();
             }
             
-            // 等待選項面板出現，嘗試多次
-            let matOptions = [];
-            let attempts = 0;
-            const maxAttempts = 10;
+            // 智能等待選項面板出現
+            const optionSelectors = [
+                'mat-option',
+                '.mat-option', 
+                '[role="option"]',
+                '.cdk-overlay-pane mat-option',
+                '.mat-select-panel mat-option'
+            ];
             
-            while (attempts < maxAttempts && matOptions.length === 0) {
-                await this.sleep(200);
-                
-                // 嘗試多種選擇器查找選項
-                const optionSelectors = [
-                    'mat-option',
-                    '.mat-option',
-                    '[role="option"]',
-                    '.cdk-overlay-pane mat-option',
-                    '.mat-select-panel mat-option'
-                ];
-                
+            let matOptions = [];
+            const matOptionsAppeared = await this.waitForCondition(() => {
                 for (const selector of optionSelectors) {
                     const options = document.querySelectorAll(selector);
                     if (options.length > 0) {
                         matOptions = Array.from(options);
                         this.logMessage(`${fieldName}: 使用選擇器 "${selector}" 找到 ${options.length} 個選項`, 'info');
-                        break;
+                        return true;
                     }
                 }
-                
-                attempts++;
+                return false;
+            }, 3000, 150, `${fieldName} mat-option 選項出現`);
+            
+            if (!matOptionsAppeared) {
+                throw new Error(`${fieldName}: mat-option 選項未在預期時間內出現`);
             }
             
             this.logMessage(`${fieldName}: 最終找到 ${matOptions.length} 個選項`, 'info');
@@ -678,7 +578,7 @@ class AutoPunchInHandler {
             }
             
             this.logMessage(`${fieldName}: 成功設定為 "${paddedValue}"`, 'success');
-            await this.sleep(500);
+            await this.sleep(200);
             
         } catch (error) {
             this.logMessage(`${fieldName}: 設定失敗: ${error.message}`, 'error');
@@ -694,10 +594,13 @@ class AutoPunchInHandler {
             const checkOutCalendarButton = calendarButtons[1]; // 第二個是簽退日期
             this.logMessage('點擊簽退日期日曆按鈕', 'info');
             checkOutCalendarButton.click();
-            await this.sleep(500);
+            await this.sleep(200);
             
-            // 等待日曆展開
-            await this.sleep(1000);
+            // 智能等待日曆展開
+            await this.waitForCondition(() => {
+                const calendarGrid = document.querySelector('gridcell button, .mat-calendar-body');
+                return calendarGrid !== null;
+            }, 3000, 100, '日曆展開');
             
             // 計算隔日日期 - 從簽到日期輸入框獲取工作日期
             const checkinDateInput = dialog.querySelector('textbox[disabled]') || 
@@ -760,7 +663,11 @@ class AutoPunchInHandler {
                 if (nextMonthBtn) {
                     this.logMessage('點擊下個月按鈕', 'info');
                     nextMonthBtn.click();
-                    await this.sleep(1000); // 等待日曆更新
+                    // 智能等待日曆更新到下個月
+                    await this.waitForCondition(() => {
+                        const dateButtons = document.querySelectorAll('button[aria-label*="2025/"]');
+                        return dateButtons.length > 0;
+                    }, 2000, 100, '日曆更新到下個月');
                 } else {
                     this.logMessage('找不到下個月按鈕，嘗試其他選擇器', 'warning');
                     // 嘗試其他可能的選擇器
@@ -808,7 +715,7 @@ class AutoPunchInHandler {
             if (targetButton) {
                 this.logMessage(`點擊隔日日期: ${targetDate}`, 'info');
                 targetButton.click();
-                await this.sleep(500);
+                await this.sleep(200);
             } else {
                 throw new Error(`找不到隔日日期按鈕: ${targetDate}`);
             }
@@ -844,7 +751,7 @@ class AutoPunchInHandler {
                 // 至少要有內容和選擇器
                 if ((hasTitle || hasContent) && hasSelects) {
                     this.logMessage('對話框已完整載入', 'info');
-                    await this.sleep(500); // 額外等待確保完全渲染
+                    await this.sleep(300); // 額外等待確保完全渲染
                     return dialog;
                 }
             }
@@ -855,22 +762,17 @@ class AutoPunchInHandler {
     }
     
     async waitForDialogCloseWithValidation() {
-        let attempts = 0;
-        const maxAttempts = 15;
-        
-        while (attempts < maxAttempts) {
+        // 智能等待對話框關閉
+        const dialogClosed = await this.waitForCondition(() => {
             const dialog = document.querySelector('[role="dialog"]');
-            if (!dialog) {
-                // 等待一段時間確保操作完成
-                await this.sleep(1000);
-                return;
-            }
-            
-            await this.sleep(500);
-            attempts++;
+            return dialog === null;
+        }, 5000, 50, '對話框關閉'); // 縮短超時至5秒，間隔縮短至50ms
+        
+        if (!dialogClosed) {
+            throw new Error('對話框未在預期時間內關閉');
         }
         
-        throw new Error('對話框未在預期時間內關閉');
+        // 移除額外等待，對話框關閉後立即繼續執行
     }
     
     async ensureDialogClosed() {
@@ -949,7 +851,7 @@ class AutoPunchInHandler {
             submitButton.click();
             
             // 等待確認對話框出現並自動處理
-            await this.sleep(1000);
+            await this.sleep(300);
             
             // 處理提交後的確認對話框
             await this.handleConfirmationDialog();
@@ -963,11 +865,26 @@ class AutoPunchInHandler {
     async handleConfirmationDialog() {
         this.logMessage('處理連續兩個瀏覽器原生確認對話框...', 'info');
         
-        // 瀏覽器原生的confirm對話框會自動被處理，因為我們會在頁面加載時設置事件監聽器
-        // 只需要等待一下讓確認流程完成
-        await this.sleep(3000);
+        // 超快速等待確認流程完成 - 使用更短的間隔和更快的響應
+        const dialogProcessed = await this.waitForCondition(() => {
+            // 檢查是否還有打開的對話框
+            const hasDialog = document.querySelector('[role="dialog"]') !== null;
+            
+            // 檢查是否有錯誤提示
+            const hasError = document.querySelector('.error, .alert-danger, [role="alert"]') !== null;
+            
+            // 對話框已關閉且無錯誤提示表示處理完成
+            return !hasDialog && !hasError;
+        }, 3000, 50, '確認對話框處理完成'); // 縮短超時至3秒，間隔縮短至50ms
         
-        this.logMessage('瀏覽器原生確認對話框處理完成', 'info');
+        if (dialogProcessed) {
+            this.logMessage('瀏覽器原生確認對話框處理完成', 'info');
+        } else {
+            this.logMessage('對話框處理超時，但繼續執行', 'warning');
+        }
+        
+        // 等待1.3秒確保所有確認流程完全結束，避免影響下一天的處理
+        await this.sleep(1300);
     }
     
     async waitForDialogClose() {
@@ -981,7 +898,7 @@ class AutoPunchInHandler {
                 return; // 對話框已關閉
             }
             
-            await this.sleep(500);
+            await this.sleep(300);
             attempts++;
         }
         
@@ -1004,6 +921,63 @@ class AutoPunchInHandler {
     
     sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    /**
+     * 智能等待 - 等待條件滿足而非固定時間
+     * @param {Function} condition - 條件檢查函數，返回 true 表示條件滿足
+     * @param {number} timeout - 最大等待時間（毫秒）
+     * @param {number} interval - 檢查間隔（毫秒）
+     * @param {string} description - 等待描述（用於日誌）
+     * @returns {Promise<boolean>} 條件是否滿足
+     */
+    async waitForCondition(condition, timeout = 5000, interval = 100, description = '') {
+        const startTime = Date.now();
+        
+        while (Date.now() - startTime < timeout) {
+            try {
+                if (await condition()) {
+                    return true;
+                }
+            } catch (error) {
+                // 條件檢查失敗，繼續等待
+            }
+            await this.sleep(interval);
+        }
+        
+        if (description) {
+            this.logMessage(`等待條件超時: ${description}`, 'warning');
+        }
+        return false;
+    }
+    
+    /**
+     * 快速等待元素出現
+     * @param {string} selector - 元素選擇器
+     * @param {number} timeout - 最大等待時間
+     * @returns {Promise<Element|null>} 找到的元素
+     */
+    async waitForElementFast(selector, timeout = 5000) {
+        return new Promise((resolve) => {
+            const startTime = Date.now();
+            
+            const checkElement = () => {
+                const element = document.querySelector(selector);
+                if (element) {
+                    resolve(element);
+                    return;
+                }
+                
+                if (Date.now() - startTime >= timeout) {
+                    resolve(null);
+                    return;
+                }
+                
+                setTimeout(checkElement, 50); // 更頻繁的檢查
+            };
+            
+            checkElement();
+        });
     }
     
     notifyComplete(success, error = null) {
