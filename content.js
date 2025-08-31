@@ -88,115 +88,6 @@ class AutoPunchInHandler {
         });
     }
     
-    setupConfirmOverride() {
-        // 檢查是否已經設置過，避免重複設置
-        if (this.confirmOverrideSetup) {
-            return;
-        }
-        
-        // 保存原始的confirm和alert函數
-        this.originalConfirm = window.confirm;
-        this.originalAlert = window.alert;
-        
-        // 使用 Object.defineProperty 來強制覆蓋，防止被其他代碼重新設定
-        Object.defineProperty(window, 'confirm', {
-            value: (message) => {
-                this.logMessage(`自動確認confirm對話框: "${message}"`, 'info');
-                setTimeout(() => {
-                    // 嘗試查找並點擊確認按鈕（備用方案）
-                    this.clickConfirmButton();
-                }, 100);
-                return true; // 自動點擊確認
-            },
-            writable: true,
-            configurable: true
-        });
-        
-        Object.defineProperty(window, 'alert', {
-            value: (message) => {
-                this.logMessage(`自動確認alert對話框: "${message}"`, 'info');
-                setTimeout(() => {
-                    // 嘗試查找並點擊確認按鈕（備用方案）
-                    this.clickConfirmButton();
-                }, 100);
-                // alert不需要返回值，直接結束即可
-            },
-            writable: true,
-            configurable: true
-        });
-        
-        // 同時設置事件監聽器來捕獲任何可能的對話框
-        document.addEventListener('click', this.handleDialogEvents.bind(this), true);
-        
-        // 標記為已設置，避免重複設置
-        this.confirmOverrideSetup = true;
-        this.logMessage('對話框覆寫設置完成', 'info');
-    }
-    
-    clickConfirmButton() {
-        // 嘗試查找頁面上的確認按鈕並點擊
-        const confirmButtons = [
-            'button:contains("確定")',
-            'button:contains("確認")', 
-            'button:contains("OK")',
-            '[role="button"]:contains("確定")',
-            '[role="button"]:contains("確認")',
-            '.swal2-confirm', // SweetAlert2
-            '.confirm-button',
-            '.modal-confirm'
-        ];
-        
-        for (const selector of confirmButtons) {
-            try {
-                // 對於 :contains 選擇器，需要手動查找
-                if (selector.includes(':contains')) {
-                    const text = selector.match(/:contains\("([^"]+)"\)/)[1];
-                    const buttons = document.querySelectorAll('button, [role="button"]');
-                    for (const btn of buttons) {
-                        if (btn.textContent && btn.textContent.trim() === text && btn.offsetHeight > 0) {
-                            this.logMessage(`找到並點擊確認按鈕: "${text}"`, 'info');
-                            btn.click();
-                            return;
-                        }
-                    }
-                } else {
-                    const btn = document.querySelector(selector);
-                    if (btn && btn.offsetHeight > 0) {
-                        this.logMessage(`找到並點擊確認按鈕: ${selector}`, 'info');
-                        btn.click();
-                        return;
-                    }
-                }
-            } catch (e) {
-                // 忽略選擇器錯誤
-            }
-        }
-    }
-    
-    handleDialogEvents(event) {
-        // 監聽可能觸發對話框的事件
-        if (event.target && event.target.textContent) {
-            const text = event.target.textContent.trim();
-            if (text === '送出' || text === '提交') {
-                setTimeout(() => {
-                    this.setupConfirmOverride(); // 重新設置攔截器
-                }, 50);
-            }
-        }
-    }
-    
-    
-    restoreOriginalDialogs() {
-        // 恢復原始的confirm和alert函數
-        if (this.originalConfirm) {
-            window.confirm = this.originalConfirm;
-        }
-        if (this.originalAlert) {
-            window.alert = this.originalAlert;
-        }
-        this.logMessage('已恢復原始瀏覽器對話框', 'info');
-    }
-    
     async startAutofill(workDaysData) {
         if (this.isRunning) {
             this.logMessage('已經在執行中，請稍候...', 'warning');
@@ -1014,9 +905,6 @@ class AutoPunchInHandler {
     
     async submitForm(dialog) {
         try {
-            // 在提交前重新設置對話框攔截器以確保可以處理確認對話框
-            this.setupConfirmOverride();
-            
             // 確保只在打卡對話框內尋找送出按鈕，避免點擊頁面上方的"送出申請"按鈕
             this.logMessage('在打卡對話框內尋找送出按鈕', 'info');
             
