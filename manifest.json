@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "彰基出勤系統自動打卡",
   "version": "1.0.0",
-  "description": "自動化彰化基督教醫院打卡系統，支援值班和請假日期設定",
+  "description": "自動化彰化基督教醫院打卡系統，支援值班、請假和加班日期設定",
   
   "permissions": [
     "activeTab",

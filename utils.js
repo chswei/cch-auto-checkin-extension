@@ -155,7 +155,7 @@ class ScheduleRules {
  * 排班計畫生成器
  */
 class ScheduleGenerator {
-    static generateSchedule(year, month, onCallDays, leaveDays) {
+    static generateSchedule(year, month, onCallDays, leaveDays, overtimeDays = new Set()) {
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const schedule = [];
         
@@ -165,6 +165,7 @@ class ScheduleGenerator {
             
             const isOnCall = onCallDays.has(dateStr);
             const isLeave = leaveDays.has(dateStr);
+            const isOvertime = overtimeDays.has(dateStr);
             const shouldSkip = ScheduleRules.shouldSkipDate(year, month, date, onCallDays, leaveDays);
             
             if (shouldSkip && !isLeave) {
@@ -195,17 +196,27 @@ class ScheduleGenerator {
                 
                 if (shiftType) {
                     const shift = ScheduleRules.SHIFT_TYPES[shiftType];
+                    
+                    // 如果是加班日，動態調整C02班別的結束時間
+                    let endTime = shift.endTime;
+                    let shiftName = shift.name;
+                    if (isOvertime && shiftType === 'C02') {
+                        endTime = '20:00';
+                        shiftName = 'C02：8-20(加班)';
+                    }
+                    
                     schedule.push({
                         date,
                         dateStr,
                         dayOfWeek,
-                        status: isOnCall ? 'oncall' : 'regular',
-                        reason: isOnCall ? '值班' : '一般上班',
+                        status: isOnCall ? 'oncall' : (isOvertime ? 'overtime' : 'regular'),
+                        reason: isOnCall ? '值班' : (isOvertime ? '加班' : '一般上班'),
                         shift: shiftType,
-                        shiftName: shift.name,
+                        shiftName: shiftName,
+                        isOvertime: isOvertime,
                         times: {
                             start: shift.startTime,
-                            end: shift.endTime,
+                            end: endTime,
                             isOvernight: shift.isOvernight || false
                         }
                     });

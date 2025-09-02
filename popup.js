@@ -7,6 +7,7 @@ class PopupController {
         this.currentMonth = new Date().getMonth();
         this.onCallDays = new Set();
         this.leaveDays = new Set();
+        this.overtimeDays = new Set();
         this.isExecuting = false;
         
         this.initializeElements();
@@ -24,6 +25,7 @@ class PopupController {
         // 日曆容器
         this.onCallCalendar = document.getElementById('onCallCalendar');
         this.leaveCalendar = document.getElementById('leaveCalendar');
+        this.overtimeCalendar = document.getElementById('overtimeCalendar');
         
         // 控制按鈕
         this.clearAllBtn = document.getElementById('clearAll');
@@ -93,6 +95,7 @@ class PopupController {
         // 清除當前選擇（因為切換月份了）
         this.onCallDays.clear();
         this.leaveDays.clear();
+        this.overtimeDays.clear();
         
         this.renderCalendars();
         this.updatePreview();
@@ -102,9 +105,10 @@ class PopupController {
         // 更新月份標籤
         this.currentMonthLabel.textContent = `${this.currentYear}年${this.currentMonth + 1}月`;
         
-        // 渲染兩個日曆
+        // 渲染三個日曆
         this.renderCalendar(this.onCallCalendar, 'oncall');
         this.renderCalendar(this.leaveCalendar, 'leave');
+        this.renderCalendar(this.overtimeCalendar, 'overtime');
     }
     
     renderCalendar(container, type) {
@@ -152,12 +156,15 @@ class PopupController {
                     // 如果已選擇的日期是今天或未來，清除選擇
                     this.onCallDays.delete(dateStr);
                     this.leaveDays.delete(dateStr);
+                    this.overtimeDays.delete(dateStr);
                 } else {
                     // 檢查選中狀態
                     if (type === 'oncall' && this.onCallDays.has(dateStr)) {
                         dayCell.classList.add('selected-oncall');
                     } else if (type === 'leave' && this.leaveDays.has(dateStr)) {
                         dayCell.classList.add('selected-leave');
+                    } else if (type === 'overtime' && this.overtimeDays.has(dateStr)) {
+                        dayCell.classList.add('selected-overtime');
                     }
                     
                     // 只對過去日期添加點擊事件
@@ -174,10 +181,13 @@ class PopupController {
     }
     
     toggleDateSelection(dateStr, type, cellElement) {
+        // 解析日期來檢查是否為平日（僅加班日需要）
+        const [year, month, day] = dateStr.split('/').map(Number);
+        const dayOfWeek = DateUtils.getDayOfWeek(year, month - 1, day);
+        
         if (type === 'oncall') {
-            // 如果已經被選為請假日，先移除
-            if (this.leaveDays.delete(dateStr)) {
-                // 找到對應的請假日格子並更新樣式
+            // 如果已經被選為其他類型，先移除
+            if (this.leaveDays.delete(dateStr) || this.overtimeDays.delete(dateStr)) {
                 this.updateDateCellStyles(dateStr);
             }
             
@@ -190,9 +200,8 @@ class PopupController {
                 cellElement.classList.add('selected-oncall');
             }
         } else if (type === 'leave') {
-            // 如果已經被選為值班日，先移除
-            if (this.onCallDays.delete(dateStr)) {
-                // 找到對應的值班日格子並更新樣式
+            // 如果已經被選為其他類型，先移除
+            if (this.onCallDays.delete(dateStr) || this.overtimeDays.delete(dateStr)) {
                 this.updateDateCellStyles(dateStr);
             }
             
@@ -204,6 +213,26 @@ class PopupController {
                 this.leaveDays.add(dateStr);
                 cellElement.classList.add('selected-leave');
             }
+        } else if (type === 'overtime') {
+            // 加班日只能選擇週一到週五
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                // 週末不能選擇加班
+                return;
+            }
+            
+            // 如果已經被選為其他類型，先移除
+            if (this.onCallDays.delete(dateStr) || this.leaveDays.delete(dateStr)) {
+                this.updateDateCellStyles(dateStr);
+            }
+            
+            // 切換加班日選擇
+            if (this.overtimeDays.has(dateStr)) {
+                this.overtimeDays.delete(dateStr);
+                cellElement.classList.remove('selected-overtime');
+            } else {
+                this.overtimeDays.add(dateStr);
+                cellElement.classList.add('selected-overtime');
+            }
         }
         
         // 檢查是否有選擇日期來啟用/禁用按鈕
@@ -213,13 +242,14 @@ class PopupController {
     clearAllSelections() {
         this.onCallDays.clear();
         this.leaveDays.clear();
+        this.overtimeDays.clear();
         this.renderCalendars();
         this.updateButtonState();
     }
     
     updateButtonState() {
         // 只有在有選擇日期時才啟用按鈕
-        this.startAutofillBtn.disabled = (this.onCallDays.size === 0 && this.leaveDays.size === 0);
+        this.startAutofillBtn.disabled = (this.onCallDays.size === 0 && this.leaveDays.size === 0 && this.overtimeDays.size === 0);
     }
     
     
@@ -280,7 +310,8 @@ class PopupController {
                 this.currentYear, 
                 this.currentMonth, 
                 this.onCallDays, 
-                this.leaveDays
+                this.leaveDays,
+                this.overtimeDays
             );
             
             const workDays = schedule.filter(day => day.shift && day.times);
@@ -328,12 +359,11 @@ class PopupController {
     }
     
     updateDateCellStyles(dateStr) {
-        // 更新兩個日曆中對應日期的樣式
-        const onCallCalendar = this.onCallCalendar;
-        const leaveCalendar = this.leaveCalendar;
+        // 更新三個日曆中對應日期的樣式
+        const calendars = [this.onCallCalendar, this.leaveCalendar, this.overtimeCalendar];
         
         // 找到對應的日期格子並移除選擇樣式
-        [onCallCalendar, leaveCalendar].forEach(calendar => {
+        calendars.forEach(calendar => {
             const dayCells = calendar.querySelectorAll('.day-cell');
             dayCells.forEach(cell => {
                 if (cell.textContent && !cell.classList.contains('other-month')) {
@@ -343,7 +373,7 @@ class PopupController {
                     const cellDateStr = DateUtils.formatDate(cellYear, cellMonth, cellDate);
                     
                     if (cellDateStr === dateStr) {
-                        cell.classList.remove('selected-oncall', 'selected-leave');
+                        cell.classList.remove('selected-oncall', 'selected-leave', 'selected-overtime');
                     }
                 }
             });

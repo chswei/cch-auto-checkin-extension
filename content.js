@@ -213,12 +213,21 @@ class AutoPunchInHandler {
     
     
     async fillPunchInData(dialog, workDay) {
-        const timeSetting = this.TIME_SETTINGS[workDay.shift];
+        let timeSetting = this.TIME_SETTINGS[workDay.shift];
         if (!timeSetting) {
             throw new Error(`未知的班別: ${workDay.shift}`);
         }
         
-        this.logMessage(`開始填寫 ${workDay.shift} 班別資料`, 'info');
+        // 如果是加班日，動態調整C02班別的簽退時間
+        if (workDay.isOvertime && workDay.shift === 'C02') {
+            timeSetting = {
+                ...timeSetting,
+                checkOut: { hour: '20', minute: '00' },
+                description: '加班日工作'
+            };
+        }
+        
+        this.logMessage(`開始填寫 ${workDay.shift} 班別資料${workDay.isOvertime ? '（加班）' : ''}`, 'info');
         
         // 1. 設定班別（跳過部門選擇，保持預設值）
         await this.selectShift(dialog, workDay.shift);
