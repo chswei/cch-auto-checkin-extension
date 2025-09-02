@@ -25,8 +25,7 @@ class PopupController {
         this.onCallCalendar = document.getElementById('onCallCalendar');
         this.leaveCalendar = document.getElementById('leaveCalendar');
         
-        // 預覽和控制
-        this.schedulePreview = document.getElementById('schedulePreview');
+        // 控制按鈕
         this.clearAllBtn = document.getElementById('clearAll');
         this.startAutofillBtn = document.getElementById('startAutofill');
         
@@ -207,106 +206,22 @@ class PopupController {
             }
         }
         
-        // 只更新預覽，不重新渲染整個日曆
-        this.updatePreview();
+        // 檢查是否有選擇日期來啟用/禁用按鈕
+        this.updateButtonState();
     }
     
     clearAllSelections() {
         this.onCallDays.clear();
         this.leaveDays.clear();
         this.renderCalendars();
-        this.updatePreview();
+        this.updateButtonState();
     }
     
-    updatePreview() {
-        if (this.onCallDays.size === 0 && this.leaveDays.size === 0) {
-            this.schedulePreview.innerHTML = '請先選擇值班日和請假日';
-            this.startAutofillBtn.disabled = true;
-            return;
-        }
-        
-        // 生成排班表
-        const schedule = ScheduleGenerator.generateSchedule(
-            this.currentYear, 
-            this.currentMonth, 
-            this.onCallDays, 
-            this.leaveDays
-        );
-        
-        // 渲染預覽表格
-        this.renderSchedulePreview(schedule);
-        this.startAutofillBtn.disabled = false;
+    updateButtonState() {
+        // 只有在有選擇日期時才啟用按鈕
+        this.startAutofillBtn.disabled = (this.onCallDays.size === 0 && this.leaveDays.size === 0);
     }
     
-    renderSchedulePreview(schedule) {
-        const table = document.createElement('table');
-        table.className = 'schedule-table';
-        
-        // 表格標題
-        const thead = document.createElement('thead');
-        thead.innerHTML = `
-            <tr>
-                <th>日期</th>
-                <th>星期</th>
-                <th>狀態</th>
-                <th>班別</th>
-                <th>時間</th>
-            </tr>
-        `;
-        table.appendChild(thead);
-        
-        // 表格內容
-        const tbody = document.createElement('tbody');
-        
-        schedule.forEach(day => {
-            const row = document.createElement('tr');
-            row.className = `schedule-row ${day.status}`;
-            
-            const dayOfWeekName = WEEKDAYS[day.dayOfWeek];
-            const timeStr = day.times ? 
-                `${day.times.start} - ${day.times.end}${day.times.isOvernight ? '(隔日)' : ''}` : 
-                '-';
-            
-            row.innerHTML = `
-                <td>${this.currentMonth + 1}/${day.date}</td>
-                <td>${dayOfWeekName}</td>
-                <td>${day.reason || '-'}</td>
-                <td>${day.shiftName || '-'}</td>
-                <td>${timeStr}</td>
-            `;
-            
-            tbody.appendChild(row);
-        });
-        
-        table.appendChild(tbody);
-        
-        // 統計資訊
-        const stats = this.generateStats(schedule);
-        const statsDiv = document.createElement('div');
-        statsDiv.style.marginTop = '10px';
-        statsDiv.style.fontSize = '12px';
-        statsDiv.style.color = '#666';
-        statsDiv.innerHTML = stats;
-        
-        this.schedulePreview.innerHTML = '';
-        this.schedulePreview.appendChild(table);
-        this.schedulePreview.appendChild(statsDiv);
-    }
-    
-    generateStats(schedule) {
-        const regularDays = schedule.filter(d => d.status === 'regular').length;
-        const onCallDays = schedule.filter(d => d.status === 'oncall').length;
-        const leaveDays = schedule.filter(d => d.status === 'leave').length;
-        const skipDays = schedule.filter(d => d.status === 'skip').length;
-        
-        return `
-            <strong>統計：</strong>
-            一般上班 ${regularDays} 天 | 
-            值班 ${onCallDays} 天 | 
-            請假 ${leaveDays} 天 | 
-            跳過 ${skipDays} 天
-        `;
-    }
     
     async checkCurrentPage() {
         try {

@@ -3,6 +3,8 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    word-wrap: break-word;
+    word-break: break-word;
 }
 
 body {
@@ -13,15 +15,15 @@ body {
 }
 
 .container {
-    width: 480px;
-    min-height: 600px;
-    max-height: 800px;
+    width: 600px;
+    min-width: 600px;
+    max-width: 600px;
+    height: 450px;
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    box-sizing: border-box;
 }
 
 /* 標題區 */
@@ -45,8 +47,9 @@ header h1 {
 /* 主要內容 */
 main {
     padding: 20px;
-    flex: 1;
+    height: calc(450px - 80px);
     overflow-y: auto;
+    box-sizing: border-box;
 }
 
 /* 月份選擇器 */
@@ -195,58 +198,6 @@ main {
     background: #f5f5f5;
 }
 
-/* 預覽區域 */
-.preview-section {
-    margin-bottom: 20px;
-}
-
-.preview-section h3 {
-    margin-bottom: 10px;
-    font-size: 16px;
-}
-
-.preview-content {
-    background: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 15px;
-    min-height: 120px;
-    max-height: 200px;
-    overflow-y: auto;
-    font-size: 13px;
-    line-height: 1.4;
-}
-
-.schedule-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-}
-
-.schedule-table th,
-.schedule-table td {
-    border: 1px solid #ddd;
-    padding: 6px 8px;
-    text-align: center;
-}
-
-.schedule-table th {
-    background: #f5f5f5;
-    font-weight: bold;
-}
-
-.schedule-row.oncall {
-    background: #e3f2fd;
-}
-
-.schedule-row.leave {
-    background: #ffebee;
-}
-
-.schedule-row.skip {
-    background: #f5f5f5;
-    color: #999;
-}
 
 /* 按鈕樣式 */
 .controls {

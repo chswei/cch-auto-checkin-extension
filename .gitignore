@@ -39,6 +39,7 @@ config.local.js
 secrets.js
 *.env
 .env.local
+CLAUDE.md
 
 # 打包或建置產物
 dist/
