@@ -177,6 +177,18 @@ main {
     border: 2px solid #4CAF50;
 }
 
+.day-cell.future-date {
+    background: #f5f5f5;
+    color: #ccc;
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.day-cell.future-date:hover {
+    background: #f5f5f5;
+}
+
 /* 預覽區域 */
 .preview-section {
     margin-bottom: 20px;

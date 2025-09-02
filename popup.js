@@ -142,21 +142,30 @@ class PopupController {
                 const dateStr = DateUtils.formatDate(dayInfo.year, dayInfo.month, dayInfo.date);
                 const isWeekend = DateUtils.isWeekend(dayInfo.year, dayInfo.month, dayInfo.date);
                 const isToday = DateUtils.isToday(dayInfo.year, dayInfo.month, dayInfo.date);
+                const isFuture = this.isFutureDate(dayInfo.year, dayInfo.month, dayInfo.date);
                 
                 if (isWeekend) dayCell.classList.add('weekend');
                 if (isToday) dayCell.classList.add('today');
                 
-                // 檢查選中狀態
-                if (type === 'oncall' && this.onCallDays.has(dateStr)) {
-                    dayCell.classList.add('selected-oncall');
-                } else if (type === 'leave' && this.leaveDays.has(dateStr)) {
-                    dayCell.classList.add('selected-leave');
+                // 檢查是否為今天或未來日期
+                if (isToday || isFuture) {
+                    dayCell.classList.add('future-date');
+                    // 如果已選擇的日期是今天或未來，清除選擇
+                    this.onCallDays.delete(dateStr);
+                    this.leaveDays.delete(dateStr);
+                } else {
+                    // 檢查選中狀態
+                    if (type === 'oncall' && this.onCallDays.has(dateStr)) {
+                        dayCell.classList.add('selected-oncall');
+                    } else if (type === 'leave' && this.leaveDays.has(dateStr)) {
+                        dayCell.classList.add('selected-leave');
+                    }
+                    
+                    // 只對過去日期添加點擊事件
+                    dayCell.addEventListener('click', () => {
+                        this.toggleDateSelection(dateStr, type, dayCell);
+                    });
                 }
-                
-                // 添加點擊事件
-                dayCell.addEventListener('click', () => {
-                    this.toggleDateSelection(dateStr, type, dayCell);
-                });
             }
             
             body.appendChild(dayCell);
@@ -396,6 +405,14 @@ class PopupController {
     updateProgress(current, total) {
         const percentage = Math.round((current / total) * 100);
         this.progressFill.style.width = `${percentage}%`;
+    }
+    
+    isFutureDate(year, month, date) {
+        const targetDate = new Date(year, month, date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // 設定為當天的00:00:00
+        targetDate.setHours(0, 0, 0, 0);
+        return targetDate >= today; // 今天或未來的日期都返回 true
     }
 }
 
