@@ -177,7 +177,10 @@ class PopupController {
     toggleDateSelection(dateStr, type, cellElement) {
         if (type === 'oncall') {
             // 如果已經被選為請假日，先移除
-            this.leaveDays.delete(dateStr);
+            if (this.leaveDays.delete(dateStr)) {
+                // 找到對應的請假日格子並更新樣式
+                this.updateDateCellStyles(dateStr);
+            }
             
             // 切換值班日選擇
             if (this.onCallDays.has(dateStr)) {
@@ -189,7 +192,10 @@ class PopupController {
             }
         } else if (type === 'leave') {
             // 如果已經被選為值班日，先移除
-            this.onCallDays.delete(dateStr);
+            if (this.onCallDays.delete(dateStr)) {
+                // 找到對應的值班日格子並更新樣式
+                this.updateDateCellStyles(dateStr);
+            }
             
             // 切換請假日選擇
             if (this.leaveDays.has(dateStr)) {
@@ -201,8 +207,7 @@ class PopupController {
             }
         }
         
-        // 重新渲染日曆以更新狀態
-        this.renderCalendars();
+        // 只更新預覽，不重新渲染整個日曆
         this.updatePreview();
     }
     
@@ -405,6 +410,29 @@ class PopupController {
     updateProgress(current, total) {
         const percentage = Math.round((current / total) * 100);
         this.progressFill.style.width = `${percentage}%`;
+    }
+    
+    updateDateCellStyles(dateStr) {
+        // 更新兩個日曆中對應日期的樣式
+        const onCallCalendar = this.onCallCalendar;
+        const leaveCalendar = this.leaveCalendar;
+        
+        // 找到對應的日期格子並移除選擇樣式
+        [onCallCalendar, leaveCalendar].forEach(calendar => {
+            const dayCells = calendar.querySelectorAll('.day-cell');
+            dayCells.forEach(cell => {
+                if (cell.textContent && !cell.classList.contains('other-month')) {
+                    const cellYear = this.currentYear;
+                    const cellMonth = this.currentMonth;
+                    const cellDate = parseInt(cell.textContent);
+                    const cellDateStr = DateUtils.formatDate(cellYear, cellMonth, cellDate);
+                    
+                    if (cellDateStr === dateStr) {
+                        cell.classList.remove('selected-oncall', 'selected-leave');
+                    }
+                }
+            });
+        });
     }
     
     isFutureDate(year, month, date) {
