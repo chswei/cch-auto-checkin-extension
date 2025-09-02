@@ -21,33 +21,43 @@
                 <button id="nextMonth" class="month-btn">&gt;</button>
             </div>
 
-            <!-- 三日曆區域 -->
-            <div class="calendars-container">
-                <!-- 值班日選擇 -->
-                <div class="calendar-section">
-                    <h3 class="calendar-title">
-                        <span class="indicator on-call"></span>
-                        選擇值班日
-                    </h3>
-                    <div id="onCallCalendar" class="calendar"></div>
-                </div>
+            <!-- 模式選擇器 -->
+            <div class="mode-selector">
+                <button id="onCallMode" class="mode-btn active" data-mode="oncall">
+                    <span class="indicator on-call"></span>
+                    值班模式
+                </button>
+                <button id="leaveMode" class="mode-btn" data-mode="leave">
+                    <span class="indicator leave"></span>
+                    請假模式
+                </button>
+                <button id="overtimeMode" class="mode-btn" data-mode="overtime">
+                    <span class="indicator overtime"></span>
+                    加班模式
+                </button>
+            </div>
 
-                <!-- 請假日選擇 -->
-                <div class="calendar-section">
-                    <h3 class="calendar-title">
-                        <span class="indicator leave"></span>
-                        選擇請假日
-                    </h3>
-                    <div id="leaveCalendar" class="calendar"></div>
-                </div>
+            <!-- 統一日曆區域 -->
+            <div class="calendar-container">
+                <div id="unifiedCalendar" class="calendar"></div>
+            </div>
 
-                <!-- 加班日選擇 -->
-                <div class="calendar-section">
-                    <h3 class="calendar-title">
-                        <span class="indicator overtime"></span>
-                        選擇加班日
-                    </h3>
-                    <div id="overtimeCalendar" class="calendar"></div>
+            <!-- 狀態圖例 -->
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="legend-indicator on-call"></span>
+                    <span class="legend-text">值</span>
+                    <span class="legend-label">值班日</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-indicator leave"></span>
+                    <span class="legend-text">假</span>
+                    <span class="legend-label">請假日</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-indicator overtime"></span>
+                    <span class="legend-text">加</span>
+                    <span class="legend-label">加班日</span>
                 </div>
             </div>
 

@@ -9,10 +9,11 @@ class PopupController {
         this.leaveDays = new Set();
         this.overtimeDays = new Set();
         this.isExecuting = false;
+        this.currentMode = 'oncall'; // 預設模式
         
         this.initializeElements();
         this.initializeEventListeners();
-        this.renderCalendars();
+        this.renderCalendar();
         this.checkCurrentPage();
     }
     
@@ -22,10 +23,13 @@ class PopupController {
         this.nextMonthBtn = document.getElementById('nextMonth');
         this.currentMonthLabel = document.getElementById('currentMonth');
         
-        // 日曆容器
-        this.onCallCalendar = document.getElementById('onCallCalendar');
-        this.leaveCalendar = document.getElementById('leaveCalendar');
-        this.overtimeCalendar = document.getElementById('overtimeCalendar');
+        // 模式選擇器
+        this.onCallModeBtn = document.getElementById('onCallMode');
+        this.leaveModeBtn = document.getElementById('leaveMode');
+        this.overtimeModeBtn = document.getElementById('overtimeMode');
+        
+        // 統一日曆容器
+        this.unifiedCalendar = document.getElementById('unifiedCalendar');
         
         // 控制按鈕
         this.clearAllBtn = document.getElementById('clearAll');
@@ -42,6 +46,11 @@ class PopupController {
         // 月份切換
         this.prevMonthBtn.addEventListener('click', () => this.changeMonth(-1));
         this.nextMonthBtn.addEventListener('click', () => this.changeMonth(1));
+        
+        // 模式切換
+        this.onCallModeBtn.addEventListener('click', () => this.switchMode('oncall'));
+        this.leaveModeBtn.addEventListener('click', () => this.switchMode('leave'));
+        this.overtimeModeBtn.addEventListener('click', () => this.switchMode('overtime'));
         
         // 控制按鈕
         this.clearAllBtn.addEventListener('click', () => this.clearAllSelections());
@@ -97,21 +106,30 @@ class PopupController {
         this.leaveDays.clear();
         this.overtimeDays.clear();
         
-        this.renderCalendars();
-        this.updatePreview();
+        this.renderCalendar();
     }
     
-    renderCalendars() {
+    renderCalendar() {
         // 更新月份標籤
         this.currentMonthLabel.textContent = `${this.currentYear}年${this.currentMonth + 1}月`;
         
-        // 渲染三個日曆
-        this.renderCalendar(this.onCallCalendar, 'oncall');
-        this.renderCalendar(this.leaveCalendar, 'leave');
-        this.renderCalendar(this.overtimeCalendar, 'overtime');
+        // 渲染統一日曆
+        this.renderUnifiedCalendar();
     }
     
-    renderCalendar(container, type) {
+    switchMode(mode) {
+        this.currentMode = mode;
+        
+        // 更新按鈕狀態
+        document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+        
+        // 重新渲染日曆以更新可選狀態
+        this.renderCalendar();
+    }
+    
+    renderUnifiedCalendar() {
+        const container = this.unifiedCalendar;
         container.innerHTML = '';
         
         // 建立日曆標題行
@@ -146,6 +164,7 @@ class PopupController {
                 const isWeekend = DateUtils.isWeekend(dayInfo.year, dayInfo.month, dayInfo.date);
                 const isToday = DateUtils.isToday(dayInfo.year, dayInfo.month, dayInfo.date);
                 const isFuture = this.isFutureDate(dayInfo.year, dayInfo.month, dayInfo.date);
+                const dayOfWeek = DateUtils.getDayOfWeek(dayInfo.year, dayInfo.month, dayInfo.date);
                 
                 if (isWeekend) dayCell.classList.add('weekend');
                 if (isToday) dayCell.classList.add('today');
@@ -158,19 +177,55 @@ class PopupController {
                     this.leaveDays.delete(dateStr);
                     this.overtimeDays.delete(dateStr);
                 } else {
-                    // 檢查選中狀態
-                    if (type === 'oncall' && this.onCallDays.has(dateStr)) {
+                    // 檢查是否可選擇（根據當前模式）
+                    let canSelect = true;
+                    let disableReason = '';
+                    
+                    if (this.currentMode === 'overtime') {
+                        // 加班模式限制
+                        if (dayOfWeek === 0 || dayOfWeek === 6) {
+                            // 週末不能選加班
+                            canSelect = false;
+                            disableReason = '週末不可選擇加班';
+                        } else {
+                            // 檢查是否為值班隔天
+                            const yesterday = new Date(dayInfo.year, dayInfo.month, dayInfo.date - 1);
+                            const yesterdayStr = DateUtils.formatDate(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+                            if (this.onCallDays.has(yesterdayStr)) {
+                                canSelect = false;
+                                disableReason = '值班隔天不可選擇加班';
+                            }
+                        }
+                    }
+                    
+                    if (!canSelect) {
+                        dayCell.style.opacity = '0.3';
+                        dayCell.style.cursor = 'not-allowed';
+                        dayCell.title = disableReason;
+                    } else {
+                        // 重置樣式（當模式切換時）
+                        dayCell.style.opacity = '';
+                        dayCell.style.cursor = '';
+                        dayCell.title = '';
+                    }
+                    
+                    // 顯示選中狀態
+                    if (this.onCallDays.has(dateStr)) {
                         dayCell.classList.add('selected-oncall');
-                    } else if (type === 'leave' && this.leaveDays.has(dateStr)) {
+                    }
+                    if (this.leaveDays.has(dateStr)) {
                         dayCell.classList.add('selected-leave');
-                    } else if (type === 'overtime' && this.overtimeDays.has(dateStr)) {
+                    }
+                    if (this.overtimeDays.has(dateStr)) {
                         dayCell.classList.add('selected-overtime');
                     }
                     
-                    // 只對過去日期添加點擊事件
-                    dayCell.addEventListener('click', () => {
-                        this.toggleDateSelection(dateStr, type, dayCell);
-                    });
+                    // 只對過去日期且可選擇的日期添加點擊事件
+                    if (canSelect) {
+                        dayCell.addEventListener('click', () => {
+                            this.toggleDateSelection(dateStr, dayCell);
+                        });
+                    }
                 }
             }
             
@@ -180,60 +235,71 @@ class PopupController {
         container.appendChild(body);
     }
     
-    toggleDateSelection(dateStr, type, cellElement) {
-        // 解析日期來檢查是否為平日（僅加班日需要）
-        const [year, month, day] = dateStr.split('/').map(Number);
-        const dayOfWeek = DateUtils.getDayOfWeek(year, month - 1, day);
+    toggleDateSelection(dateStr, cellElement) {
+        const currentMode = this.currentMode;
         
-        if (type === 'oncall') {
+        if (currentMode === 'oncall') {
             // 如果已經被選為其他類型，先移除
-            if (this.leaveDays.delete(dateStr) || this.overtimeDays.delete(dateStr)) {
-                this.updateDateCellStyles(dateStr);
-            }
+            this.leaveDays.delete(dateStr);
+            this.overtimeDays.delete(dateStr);
             
             // 切換值班日選擇
             if (this.onCallDays.has(dateStr)) {
                 this.onCallDays.delete(dateStr);
-                cellElement.classList.remove('selected-oncall');
             } else {
                 this.onCallDays.add(dateStr);
-                cellElement.classList.add('selected-oncall');
+                
+                // 檢查隔天是否有加班日，如果有則移除
+                const [year, month, day] = dateStr.split('/').map(Number);
+                const tomorrow = new Date(year, month - 1, day + 1);
+                const tomorrowStr = DateUtils.formatDate(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+                if (this.overtimeDays.has(tomorrowStr)) {
+                    this.overtimeDays.delete(tomorrowStr);
+                }
             }
-        } else if (type === 'leave') {
+        } else if (currentMode === 'leave') {
             // 如果已經被選為其他類型，先移除
-            if (this.onCallDays.delete(dateStr) || this.overtimeDays.delete(dateStr)) {
-                this.updateDateCellStyles(dateStr);
-            }
+            this.onCallDays.delete(dateStr);
+            this.overtimeDays.delete(dateStr);
             
             // 切換請假日選擇
             if (this.leaveDays.has(dateStr)) {
                 this.leaveDays.delete(dateStr);
-                cellElement.classList.remove('selected-leave');
             } else {
                 this.leaveDays.add(dateStr);
-                cellElement.classList.add('selected-leave');
             }
-        } else if (type === 'overtime') {
+        } else if (currentMode === 'overtime') {
             // 加班日只能選擇週一到週五
+            const [year, month, day] = dateStr.split('/').map(Number);
+            const dayOfWeek = DateUtils.getDayOfWeek(year, month - 1, day);
+            
             if (dayOfWeek === 0 || dayOfWeek === 6) {
                 // 週末不能選擇加班
                 return;
             }
             
-            // 如果已經被選為其他類型，先移除
-            if (this.onCallDays.delete(dateStr) || this.leaveDays.delete(dateStr)) {
-                this.updateDateCellStyles(dateStr);
+            // 檢查是否為值班隔天
+            const yesterday = new Date(year, month - 1, day - 1);
+            const yesterdayStr = DateUtils.formatDate(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+            if (this.onCallDays.has(yesterdayStr)) {
+                // 值班隔天不能選擇加班
+                return;
             }
+            
+            // 如果已經被選為其他類型，先移除
+            this.onCallDays.delete(dateStr);
+            this.leaveDays.delete(dateStr);
             
             // 切換加班日選擇
             if (this.overtimeDays.has(dateStr)) {
                 this.overtimeDays.delete(dateStr);
-                cellElement.classList.remove('selected-overtime');
             } else {
                 this.overtimeDays.add(dateStr);
-                cellElement.classList.add('selected-overtime');
             }
         }
+        
+        // 重新渲染日曆以更新狀態
+        this.renderCalendar();
         
         // 檢查是否有選擇日期來啟用/禁用按鈕
         this.updateButtonState();
@@ -243,7 +309,7 @@ class PopupController {
         this.onCallDays.clear();
         this.leaveDays.clear();
         this.overtimeDays.clear();
-        this.renderCalendars();
+        this.renderCalendar();
         this.updateButtonState();
     }
     
@@ -358,27 +424,6 @@ class PopupController {
         this.progressFill.style.width = `${percentage}%`;
     }
     
-    updateDateCellStyles(dateStr) {
-        // 更新三個日曆中對應日期的樣式
-        const calendars = [this.onCallCalendar, this.leaveCalendar, this.overtimeCalendar];
-        
-        // 找到對應的日期格子並移除選擇樣式
-        calendars.forEach(calendar => {
-            const dayCells = calendar.querySelectorAll('.day-cell');
-            dayCells.forEach(cell => {
-                if (cell.textContent && !cell.classList.contains('other-month')) {
-                    const cellYear = this.currentYear;
-                    const cellMonth = this.currentMonth;
-                    const cellDate = parseInt(cell.textContent);
-                    const cellDateStr = DateUtils.formatDate(cellYear, cellMonth, cellDate);
-                    
-                    if (cellDateStr === dateStr) {
-                        cell.classList.remove('selected-oncall', 'selected-leave', 'selected-overtime');
-                    }
-                }
-            });
-        });
-    }
     
     isFutureDate(year, month, date) {
         const targetDate = new Date(year, month, date);
