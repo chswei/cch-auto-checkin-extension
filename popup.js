@@ -14,6 +14,7 @@ class PopupController {
         this.initializeElements();
         this.initializeEventListeners();
         this.renderCalendar();
+        this.updateButtonState(); // 初始化延長工時顯示
         this.checkCurrentPage();
     }
     
@@ -30,6 +31,9 @@ class PopupController {
         
         // 統一日曆容器
         this.unifiedCalendar = document.getElementById('unifiedCalendar');
+        
+        // 延長工時顯示
+        this.totalOvertimeHours = document.getElementById('totalOvertimeHours');
         
         // 控制按鈕
         this.clearAllBtn = document.getElementById('clearAll');
@@ -62,20 +66,23 @@ class PopupController {
     }
     
     setupContentScriptListener() {
-        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-            switch (message.type) {
-                case 'LOG_MESSAGE':
-                    this.logMessage(message.message, message.messageType);
-                    break;
-                case 'UPDATE_PROGRESS':
-                    this.updateProgress(message.current, message.total);
-                    break;
-                case 'AUTOFILL_COMPLETE':
-                    this.handleAutofillComplete(message);
-                    break;
-            }
-            return true;
-        });
+        // 檢查是否在 Chrome extension 環境中
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+            chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+                switch (message.type) {
+                    case 'LOG_MESSAGE':
+                        this.logMessage(message.message, message.messageType);
+                        break;
+                    case 'UPDATE_PROGRESS':
+                        this.updateProgress(message.current, message.total);
+                        break;
+                    case 'AUTOFILL_COMPLETE':
+                        this.handleAutofillComplete(message);
+                        break;
+                }
+                return true;
+            });
+        }
     }
     
     handleAutofillComplete(message) {
@@ -107,6 +114,7 @@ class PopupController {
         this.overtimeDays.clear();
         
         this.renderCalendar();
+        this.updateButtonState(); // 這裡會同時更新延長工時顯示
     }
     
     renderCalendar() {
@@ -123,6 +131,14 @@ class PopupController {
         // 更新按鈕狀態
         document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+        
+        // 為加班模式添加特殊CSS類
+        const calendarContainer = document.querySelector('.calendar-container');
+        if (mode === 'overtime') {
+            calendarContainer.classList.add('overtime-mode');
+        } else {
+            calendarContainer.classList.remove('overtime-mode');
+        }
         
         // 重新渲染日曆以更新可選狀態
         this.renderCalendar();
@@ -199,13 +215,11 @@ class PopupController {
                     }
                     
                     if (!canSelect) {
-                        dayCell.style.opacity = '0.3';
-                        dayCell.style.cursor = 'not-allowed';
+                        dayCell.classList.add('disabled-for-overtime');
                         dayCell.title = disableReason;
                     } else {
                         // 重置樣式（當模式切換時）
-                        dayCell.style.opacity = '';
-                        dayCell.style.cursor = '';
+                        dayCell.classList.remove('disabled-for-overtime');
                         dayCell.title = '';
                     }
                     
@@ -310,12 +324,25 @@ class PopupController {
         this.leaveDays.clear();
         this.overtimeDays.clear();
         this.renderCalendar();
-        this.updateButtonState();
+        this.updateButtonState(); // 這裡會同時更新延長工時顯示
     }
     
     updateButtonState() {
         // 只有在有選擇日期時才啟用按鈕
         this.startAutofillBtn.disabled = (this.onCallDays.size === 0 && this.leaveDays.size === 0 && this.overtimeDays.size === 0);
+        
+        // 更新延長工時顯示
+        this.updateOvertimeHours();
+    }
+    
+    updateOvertimeHours() {
+        // 計算延長工時：值班日3小時，加班日2小時
+        const onCallHours = this.onCallDays.size * 3;
+        const overtimeHours = this.overtimeDays.size * 2;
+        const totalHours = onCallHours + overtimeHours;
+        
+        // 更新顯示
+        this.totalOvertimeHours.textContent = totalHours;
     }
     
     

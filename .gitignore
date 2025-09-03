@@ -44,3 +44,6 @@ CLAUDE.md
 # 打包或建置產物
 dist/
 build/
+
+# Playwright MCP 生成的檔案
+.playwright-mcp/

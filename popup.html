@@ -9,8 +9,8 @@
 <body>
     <div class="container">
         <header>
-            <h1>彰基自動打卡系統</h1>
-            <p class="subtitle">選擇值班日與請假日，系統將自動產生排班表</p>
+            <h1>彰基出勤系統自動打卡</h1>
+            <p class="subtitle">選擇值班日、請假日與加班日，系統將自動打卡</p>
         </header>
 
         <main>
@@ -25,15 +25,15 @@
             <div class="mode-selector">
                 <button id="onCallMode" class="mode-btn active" data-mode="oncall">
                     <span class="indicator on-call"></span>
-                    值班模式
+                    值班
                 </button>
                 <button id="leaveMode" class="mode-btn" data-mode="leave">
                     <span class="indicator leave"></span>
-                    請假模式
+                    請假
                 </button>
                 <button id="overtimeMode" class="mode-btn" data-mode="overtime">
                     <span class="indicator overtime"></span>
-                    加班模式
+                    加班
                 </button>
             </div>
 
@@ -42,25 +42,14 @@
                 <div id="unifiedCalendar" class="calendar"></div>
             </div>
 
-            <!-- 狀態圖例 -->
-            <div class="legend">
-                <div class="legend-item">
-                    <span class="legend-indicator on-call"></span>
-                    <span class="legend-text">值</span>
-                    <span class="legend-label">值班日</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-indicator leave"></span>
-                    <span class="legend-text">假</span>
-                    <span class="legend-label">請假日</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-indicator overtime"></span>
-                    <span class="legend-text">加</span>
-                    <span class="legend-label">加班日</span>
-                </div>
-            </div>
 
+
+            <!-- 延長工時顯示 -->
+            <div id="overtimeInfo" class="overtime-info">
+                <span class="overtime-text">延長總工時共</span>
+                <span id="totalOvertimeHours" class="overtime-hours">0</span>
+                <span class="overtime-text">小時</span>
+            </div>
 
             <!-- 控制按鈕 -->
             <div class="controls">
