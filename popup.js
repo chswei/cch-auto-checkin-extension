@@ -71,7 +71,7 @@ class PopupController {
             chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 switch (message.type) {
                     case 'LOG_MESSAGE':
-                        this.logMessage(message.message, message.messageType);
+                        this.filterAndLogMessage(message.message, message.messageType);
                         break;
                     case 'UPDATE_PROGRESS':
                         this.updateProgress(message.current, message.total);
@@ -85,9 +85,33 @@ class PopupController {
         }
     }
     
+    filterAndLogMessage(message, messageType) {
+        // 只顯示用戶關心的重要訊息
+        const importantKeywords = [
+            '開始自動打卡',
+            '共需處理',
+            '號打卡完成',
+            '所有打卡記錄處理完成',
+            '自動打卡完成',
+            '自動打卡失敗',
+            '用戶取消執行',
+            '錯誤:',
+            '指令已發送到頁面',
+            '自動打卡系統已停止運行'
+        ];
+        
+        // 檢查訊息是否包含重要關鍵詞
+        const shouldShow = importantKeywords.some(keyword => 
+            message.includes(keyword)
+        );
+        
+        if (shouldShow) {
+            this.logMessage(message, messageType);
+        }
+    }
+    
     handleAutofillComplete(message) {
         this.isExecuting = false;
-        this.progressSection.style.display = 'none';
         this.startAutofillBtn.disabled = false;
         this.clearAllBtn.disabled = false;
         
@@ -352,7 +376,7 @@ class PopupController {
             const isCorrectPage = tab.url && tab.url.includes('dpt.cch.org.tw/EIP');
             
             if (!isCorrectPage) {
-                this.showWarning('請先導航到彰基EIP打卡頁面');
+                this.showWarning('非彰基打卡頁面');
                 this.startAutofillBtn.disabled = true;
             }
         } catch (error) {
@@ -370,6 +394,7 @@ class PopupController {
             border-radius: 4px;
             margin-bottom: 10px;
             font-size: 13px;
+            text-align: center;
         `;
         warning.textContent = message;
         
@@ -431,7 +456,6 @@ class PopupController {
     
     stopProcess() {
         this.isExecuting = false;
-        this.progressSection.style.display = 'none';
         this.startAutofillBtn.disabled = false;
         this.clearAllBtn.disabled = false;
         this.logMessage('用戶取消執行', 'info');
