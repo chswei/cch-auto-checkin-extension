@@ -163,6 +163,24 @@ class ScheduleGenerator {
             const dateStr = DateUtils.formatDate(year, month, date);
             const dayOfWeek = DateUtils.getDayOfWeek(year, month, date);
             
+            // 檢查是否為今天或未來日期
+            const isToday = DateUtils.isToday(year, month, date);
+            const isFuture = this.isFutureDate(year, month, date);
+            
+            if (isToday || isFuture) {
+                // 跳過今天和未來的日期
+                schedule.push({
+                    date,
+                    dateStr,
+                    dayOfWeek,
+                    status: 'skip',
+                    reason: isToday ? '今天不可打卡' : '未來日期不可打卡',
+                    shift: null,
+                    times: null
+                });
+                continue;
+            }
+            
             const isOnCall = onCallDays.has(dateStr);
             const isLeave = leaveDays.has(dateStr);
             const isOvertime = overtimeDays.has(dateStr);
@@ -245,6 +263,14 @@ class ScheduleGenerator {
         }
         
         return '跳過';
+    }
+    
+    static isFutureDate(year, month, date) {
+        const targetDate = new Date(year, month, date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        targetDate.setHours(0, 0, 0, 0);
+        return targetDate > today; // 只有未來日期返回 true，不包含今天
     }
 }
 
