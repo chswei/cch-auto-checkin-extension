@@ -49,30 +49,33 @@
                         <button id="nextMonth" class="month-btn">&gt;</button>
                     </div>
 
-                    <!-- 執行進度 -->
-                    <div id="progressSection" class="progress-section">
-                        <div class="progress-header">
-                            <div id="progressText" class="progress-text">執行進度</div>
-                            <div class="progress-bar">
-                                <div id="progressFill" class="progress-fill"></div>
+                    <!-- 內容包裝器 -->
+                    <div class="right-content-wrapper">
+                        <!-- 執行進度 -->
+                        <div id="progressSection" class="progress-section">
+                            <div class="progress-header">
+                                <div id="progressText" class="progress-text">執行進度</div>
+                                <div class="progress-bar">
+                                    <div id="progressFill" class="progress-fill"></div>
+                                </div>
                             </div>
-                        </div>
-                        <button id="stopProcess" class="btn btn-danger" style="display: none;">停止執行</button>
-                    </div>
-
-                    <!-- 底部控制區 -->
-                    <div class="bottom-controls">
-                        <!-- 延長工時顯示 -->
-                        <div id="overtimeInfo" class="overtime-info">
-                            <span class="overtime-text">延長總工時共</span>
-                            <span id="totalOvertimeHours" class="overtime-hours">0</span>
-                            <span class="overtime-text">小時</span>
+                            <button id="stopProcess" class="btn btn-danger" style="display: none;">停止執行</button>
                         </div>
 
-                        <!-- 控制按鈕 -->
-                        <div class="controls">
-                            <button id="clearAll" class="btn btn-secondary">清除所有選擇</button>
-                            <button id="startAutofill" class="btn btn-primary">開始自動打卡</button>
+                        <!-- 底部控制區 -->
+                        <div class="bottom-controls">
+                            <!-- 延長工時顯示 -->
+                            <div id="overtimeInfo" class="overtime-info">
+                                <span class="overtime-text">延長總工時共</span>
+                                <span id="totalOvertimeHours" class="overtime-hours">0</span>
+                                <span class="overtime-text">小時</span>
+                            </div>
+
+                            <!-- 控制按鈕 -->
+                            <div class="controls">
+                                <button id="clearAll" class="btn btn-secondary">清除所有選擇</button>
+                                <button id="startAutofill" class="btn btn-primary">開始自動打卡</button>
+                            </div>
                         </div>
                     </div>
                 </div>

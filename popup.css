@@ -80,10 +80,10 @@ main {
 
 .right-panel {
     width: 280px;
+    position: relative;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    gap: 10px;
 }
 
 /* 月份選擇器 */
@@ -91,8 +91,20 @@ main {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 8px;
-    margin-top: 9px;
+    height: 42.5px;
+    margin-bottom: 10px;
+    margin-top: 4px; /* Align with mode selector */
+    position: relative;
+    z-index: 20;
+}
+
+/* 右側內容包裝器 */
+.right-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    justify-content: space-between;
+    margin-top: 10px; /* Perfectly align with calendar-container */
 }
 
 .month-btn {
@@ -354,19 +366,21 @@ main {
 .overtime-info {
     text-align: center;
     padding: 10px 12px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 6px;
-    border: 1px solid #dee2e6;
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border-radius: 8px;
+    border: 1px solid #a5d6a7;
+    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.15);
     font-size: 14px;
     font-weight: 500;
-    color: #495057;
+    color: #1b5e20;
+    margin-bottom: 16px;
 }
 
 .overtime-hours {
     font-weight: bold;
-    color: #007bff;
-    font-size: 16px;
-    margin: 0 2px;
+    color: #2e7d32;
+    font-size: 18px;
+    margin: 0 4px;
 }
 
 .overtime-text {
@@ -377,10 +391,9 @@ main {
 .bottom-controls {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    position: relative;
-    margin-top: auto;
-    margin-bottom: 8px;
+    gap: 12px;
+    flex-shrink: 0;
+    margin-bottom: 5px; /* Perfectly align button bottom with calendar bottom */
 }
 
 /* 按鈕樣式 */
@@ -452,8 +465,8 @@ main {
     border-radius: 6px;
     padding: 10px;
     border: 1px solid #e0e0e0;
-    flex: 0 0 auto;
-    margin-top: 2px;
+    height: 80px;
+    flex-shrink: 0;
 }
 
 .progress-header h3 {
