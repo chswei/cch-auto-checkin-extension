@@ -434,6 +434,16 @@ main {
     background: #da190b;
 }
 
+.btn-success {
+    background: #4CAF50;
+    color: white;
+    margin-top: 5px;
+}
+
+.btn-success:hover {
+    background: #45a049;
+}
+
 /* 進度顯示 */
 .progress-section {
     display: flex;

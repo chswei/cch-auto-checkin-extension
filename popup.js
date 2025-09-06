@@ -9,6 +9,7 @@ class PopupController {
         this.leaveDays = new Set();
         this.overtimeDays = new Set();
         this.isExecuting = false;
+        this.isPaused = false;
         this.currentMode = 'oncall'; // 預設模式
         
         this.initializeElements();
@@ -59,7 +60,7 @@ class PopupController {
         // 控制按鈕
         this.clearAllBtn.addEventListener('click', () => this.clearAllSelections());
         this.startAutofillBtn.addEventListener('click', () => this.startAutofill());
-        this.stopProcessBtn.addEventListener('click', () => this.stopProcess());
+        this.stopProcessBtn.addEventListener('click', () => this.handleStopResumeClick());
         
         // 監聽來自 content script 的訊息
         this.setupContentScriptListener();
@@ -105,19 +106,30 @@ class PopupController {
     }
     
     handleAutofillComplete(message) {
-        this.isExecuting = false;
-        this.stopProcessBtn.style.display = 'none';
-        this.startAutofillBtn.disabled = false;
-        this.clearAllBtn.disabled = false;
-        
         if (message.success) {
+            // 成功完成，完全重置狀態
+            this.isExecuting = false;
+            this.isPaused = false;
+            this.stopProcessBtn.style.display = 'none';
+            this.stopProcessBtn.textContent = '停止執行';
+            this.stopProcessBtn.className = 'btn btn-danger';  // 重置為紅色
+            this.startAutofillBtn.disabled = false;
+            this.clearAllBtn.disabled = false;
             this.logMessage('自動打卡完成！', 'success');
         } else {
             // 區分用戶停止和真正的錯誤
             if (message.error && message.error.includes('用戶停止執行')) {
+                // 用戶停止，不重置狀態，保持暫停狀態
                 this.logMessage('用戶停止執行', 'info');
             } else {
-                // 真正的失敗情況（實際上很少發生）
+                // 真正的失敗情況，完全重置狀態
+                this.isExecuting = false;
+                this.isPaused = false;
+                this.stopProcessBtn.style.display = 'none';
+                this.stopProcessBtn.textContent = '停止執行';
+                this.stopProcessBtn.className = 'btn btn-danger';  // 重置為紅色
+                this.startAutofillBtn.disabled = false;
+                this.clearAllBtn.disabled = false;
                 this.logMessage(`自動打卡失敗: ${message.error}`, 'error');
             }
         }
@@ -453,10 +465,20 @@ class PopupController {
     }
     
     
+    handleStopResumeClick() {
+        if (this.isPaused) {
+            this.resumeProcess();
+        } else {
+            this.stopProcess();
+        }
+    }
+
     async stopProcess() {
         this.isExecuting = false;
-        this.stopProcessBtn.style.display = 'none';
-        this.startAutofillBtn.disabled = false;
+        this.isPaused = true;
+        this.stopProcessBtn.textContent = '恢復執行';
+        this.stopProcessBtn.className = 'btn btn-success';  // 綠色按鈕
+        this.startAutofillBtn.disabled = true;
         this.clearAllBtn.disabled = false;
         
         // 發送停止消息給 content script
@@ -470,8 +492,27 @@ class PopupController {
         } catch (error) {
             // 靜默失敗，不顯示錯誤
         }
+    }
+
+    async resumeProcess() {
+        this.isExecuting = true;
+        this.isPaused = false;
+        this.stopProcessBtn.textContent = '停止執行';
+        this.stopProcessBtn.className = 'btn btn-danger';  // 紅色按鈕
+        this.startAutofillBtn.disabled = true;
+        this.clearAllBtn.disabled = true;
         
-        this.logMessage('用戶停止執行', 'info');
+        // 發送恢復消息給 content script
+        try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tab && tab.url.includes('dpt.cch.org.tw/EIP')) {
+                await chrome.tabs.sendMessage(tab.id, {
+                    type: 'RESUME_AUTOFILL'
+                });
+            }
+        } catch (error) {
+            // 靜默失敗，不執行任何操作
+        }
     }
     
     logMessage(message, type = 'info') {

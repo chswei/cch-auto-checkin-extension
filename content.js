@@ -91,6 +91,9 @@ class AutoPunchInHandler {
             } else if (message.type === 'STOP_AUTOFILL') {
                 this.stopAutofill();
                 sendResponse({ status: 'stopped' });
+            } else if (message.type === 'RESUME_AUTOFILL') {
+                this.resumeAutofill();
+                sendResponse({ status: 'resumed' });
             }
             return true;
         });
@@ -100,7 +103,70 @@ class AutoPunchInHandler {
         if (this.isRunning) {
             this.isRunning = false;
             this.userStopped = true;
+            // 立即顯示停止訊息
+            this.logMessage('用戶停止執行', 'info');
             this.notifyComplete(false, '用戶停止執行');
+        }
+    }
+
+    async resumeAutofill() {
+        if (this.userStopped && this.workDays && this.workDays.length > 0) {
+            this.isRunning = true;
+            this.userStopped = false;
+            this.logMessage('恢復執行中...', 'info');
+            
+            // 先顯示當前進度
+            this.updateProgress(this.currentIndex, this.workDays.length);
+            
+            // 先確保對話框被關閉，然後從當前索引繼續執行
+            await this.ensureDialogClosed();
+            await this.sleep(500); // 等待對話框完全關閉
+            
+            this.continueFromCurrentIndex();
+        }
+    }
+
+    async continueFromCurrentIndex() {
+        try {
+            for (let i = this.currentIndex; i < this.workDays.length && this.checkRunning(); i++) {
+                this.currentIndex = i;
+                const workDay = this.workDays[i];
+                
+                try {
+                    await this.processSingleDay(workDay);
+                    // 只有在成功處理完單日後才更新進度
+                    if (this.checkRunning()) {
+                        this.updateProgress(i + 1, this.workDays.length);
+                    }
+                } catch (error) {
+                    if (!this.checkRunning()) return;
+                }
+                
+                if (i < this.workDays.length - 1 && this.checkRunning()) {
+                    await this.sleep(800);
+                }
+            }
+            
+            // 檢查是否正常完成（沒有被用戶停止）
+            if (this.checkRunning()) {
+                // 所有打卡記錄處理完成
+                this.notifyComplete(true);
+                this.logMessage('自動打卡完成！', 'success');
+            }
+            
+        } catch (error) {
+            if (this.userStopped) {
+                // 用戶停止，不當作錯誤處理
+                return;
+            }
+            // 執行過程發生錯誤
+            this.notifyComplete(false, error.message);
+        } finally {
+            if (this.checkRunning()) {
+                // 只有在正常完成時才重置
+                this.isRunning = false;
+                this.userStopped = false;
+            }
         }
     }
     
@@ -124,22 +190,25 @@ class AutoPunchInHandler {
                 
                 try {
                     await this.processSingleDay(workDay);
+                    // 只有在成功處理完單日後才更新進度
+                    if (this.checkRunning()) {
+                        this.updateProgress(i + 1, this.workDays.length);
+                    }
                 } catch (error) {
                     if (!this.checkRunning()) return;
                 }
                 
-                this.updateProgress(i + 1, this.workDays.length);
-                
-                if (i < this.workDays.length - 1) {
+                if (i < this.workDays.length - 1 && this.checkRunning()) {
                     await this.sleep(800);
                 }
             }
             
-            // 所有打卡記錄處理完成
-            this.notifyComplete(true);
-            
-            // 確保所有處理完全結束，停止任何後續操作
-            this.logMessage('自動打卡完成！', 'success');
+            // 檢查是否正常完成（沒有被用戶停止）
+            if (this.checkRunning()) {
+                // 所有打卡記錄處理完成
+                this.notifyComplete(true);
+                this.logMessage('自動打卡完成！', 'success');
+            }
             
         } catch (error) {
             if (this.userStopped) {
@@ -149,8 +218,10 @@ class AutoPunchInHandler {
             // 執行過程發生錯誤（實際上很少觸發）
             this.notifyComplete(false, error.message);
         } finally {
-            this.isRunning = false;
-            this.userStopped = false;
+            // 只在正常完成時重置狀態，停止時保持 userStopped = true
+            if (!this.userStopped) {
+                this.isRunning = false;
+            }
         }
     }
     
