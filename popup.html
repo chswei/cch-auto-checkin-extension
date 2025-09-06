@@ -6,7 +6,7 @@
     <title>彰基自動打卡系統</title>
     <link rel="stylesheet" href="popup.css">
 </head>
-<body>
+<body style="width: 700px; height: 550px; overflow: hidden;">
     <div class="container">
         <header>
             <h1>出勤系統自動打卡</h1>
@@ -14,59 +14,69 @@
         </header>
 
         <main>
-            <!-- 月份選擇 -->
-            <div class="month-selector">
-                <button id="prevMonth" class="month-btn">&lt;</button>
-                <h2 id="currentMonth">2025年8月</h2>
-                <button id="nextMonth" class="month-btn">&gt;</button>
-            </div>
+            <div class="horizontal-layout">
+                <!-- 左側控制區 -->
+                <div class="left-panel">
+                    <!-- 模式選擇器 -->
+                    <div class="mode-selector">
+                        <button id="onCallMode" class="mode-btn active" data-mode="oncall">
+                            <span class="indicator on-call"></span>
+                            值班
+                        </button>
+                        <button id="leaveMode" class="mode-btn" data-mode="leave">
+                            <span class="indicator leave"></span>
+                            請假
+                        </button>
+                        <button id="overtimeMode" class="mode-btn" data-mode="overtime">
+                            <span class="indicator overtime"></span>
+                            加班
+                        </button>
+                    </div>
 
-            <!-- 模式選擇器 -->
-            <div class="mode-selector">
-                <button id="onCallMode" class="mode-btn active" data-mode="oncall">
-                    <span class="indicator on-call"></span>
-                    值班
-                </button>
-                <button id="leaveMode" class="mode-btn" data-mode="leave">
-                    <span class="indicator leave"></span>
-                    請假
-                </button>
-                <button id="overtimeMode" class="mode-btn" data-mode="overtime">
-                    <span class="indicator overtime"></span>
-                    加班
-                </button>
-            </div>
+                    <!-- 統一日曆區域 -->
+                    <div class="calendar-container">
+                        <div id="unifiedCalendar" class="calendar"></div>
+                    </div>
 
-            <!-- 統一日曆區域 -->
-            <div class="calendar-container">
-                <div id="unifiedCalendar" class="calendar"></div>
-            </div>
+                </div>
 
+                <!-- 右側控制區 -->
+                <div class="right-panel">
+                    <!-- 月份選擇 -->
+                    <div class="month-selector">
+                        <button id="prevMonth" class="month-btn">&lt;</button>
+                        <h2 id="currentMonth">2025年8月</h2>
+                        <button id="nextMonth" class="month-btn">&gt;</button>
+                    </div>
 
+                    <!-- 執行進度 -->
+                    <div id="progressSection" class="progress-section">
+                        <div class="progress-header">
+                            <h3>執行進度</h3>
+                            <div class="progress-bar">
+                                <div id="progressFill" class="progress-fill"></div>
+                            </div>
+                        </div>
+                        <div id="progressLog" class="progress-log"></div>
+                        <button id="stopProcess" class="btn btn-danger" style="display: none;">停止執行</button>
+                    </div>
 
-            <!-- 延長工時顯示 -->
-            <div id="overtimeInfo" class="overtime-info">
-                <span class="overtime-text">延長總工時共</span>
-                <span id="totalOvertimeHours" class="overtime-hours">0</span>
-                <span class="overtime-text">小時</span>
-            </div>
+                    <!-- 底部控制區 -->
+                    <div class="bottom-controls">
+                        <!-- 延長工時顯示 -->
+                        <div id="overtimeInfo" class="overtime-info">
+                            <span class="overtime-text">延長總工時共</span>
+                            <span id="totalOvertimeHours" class="overtime-hours">0</span>
+                            <span class="overtime-text">小時</span>
+                        </div>
 
-            <!-- 控制按鈕 -->
-            <div class="controls">
-                <button id="clearAll" class="btn btn-secondary">清除所有選擇</button>
-                <button id="startAutofill" class="btn btn-primary" disabled>開始自動打卡</button>
-            </div>
-
-            <!-- 進度顯示 -->
-            <div id="progressSection" class="progress-section" style="display: none;">
-                <div class="progress-header">
-                    <h3>執行進度</h3>
-                    <div class="progress-bar">
-                        <div id="progressFill" class="progress-fill"></div>
+                        <!-- 控制按鈕 -->
+                        <div class="controls">
+                            <button id="clearAll" class="btn btn-secondary">清除所有選擇</button>
+                            <button id="startAutofill" class="btn btn-primary" disabled>開始自動打卡</button>
+                        </div>
                     </div>
                 </div>
-                <div id="progressLog" class="progress-log"></div>
-                <button id="stopProcess" class="btn btn-danger">停止執行</button>
             </div>
         </main>
     </div>

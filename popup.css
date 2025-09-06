@@ -8,8 +8,8 @@
 }
 
 html {
-    width: 320px;
-    height: auto;
+    width: 700px;
+    height: 550px;
     margin: 0;
     padding: 0;
     background: white;
@@ -23,17 +23,14 @@ body {
     background: white;
     margin: 0;
     padding: 0;
-    width: 320px;
-    height: auto;
+    width: 700px;
+    height: 550px;
     overflow: hidden;
 }
 
 .container {
-    width: 320px;
-    min-width: 320px;
-    max-width: 320px;
-    height: auto;
-    min-height: 500px;
+    width: 700px;
+    height: 550px;
     background: white;
     border-radius: 0;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -41,6 +38,8 @@ body {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 /* 標題區 */
@@ -64,8 +63,32 @@ header h1 {
 /* 主要內容 */
 main {
     padding: 12px;
-    height: auto;
+    flex: 1;
     box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* 橫向布局 */
+.horizontal-layout {
+    display: flex;
+    gap: 20px;
+    height: 100%;
+}
+
+.left-panel {
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+}
+
+.right-panel {
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 10px;
 }
 
 /* 月份選擇器 */
@@ -74,6 +97,7 @@ main {
     align-items: center;
     justify-content: center;
     margin-bottom: 8px;
+    margin-top: 9px;
 }
 
 .month-btn {
@@ -101,9 +125,11 @@ main {
 /* 模式選擇器 */
 .mode-selector {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 8px;
+    margin-top: 4px;
     justify-content: space-between;
+    width: 357px;
     margin-left: auto;
     margin-right: auto;
 }
@@ -137,6 +163,7 @@ main {
 /* 日曆容器 */
 .calendar-container {
     margin-bottom: 8px;
+    flex: 0 0 auto;
 }
 
 .indicator {
@@ -161,52 +188,57 @@ main {
 /* 日曆樣式 */
 .calendar {
     border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    border-radius: 6px;
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    width: 100%;
+    width: fit-content;
+    margin: 0 auto;
 }
 
 .calendar-header {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, 48px);
     background: #f8f9fa;
-    padding: 8px 8px 4px 8px;
-    gap: 1px;
+    padding: 8px 10px 6px 10px;
+    gap: 3px;
     margin-bottom: 0px;
     border-radius: 6px 6px 0 0;
+    justify-content: center;
 }
 
 .day-header {
-    aspect-ratio: 1;
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: #495057;
     background: #e9ecef;
-    border-radius: 4px;
+    border-radius: 5px;
 }
 
 .calendar-body {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 1px;
-    padding: 4px 8px 8px 8px;
+    grid-template-columns: repeat(7, 48px);
+    gap: 3px;
+    padding: 6px 10px 8px 10px;
     background: #f8f9fa;
     border-radius: 0 0 6px 6px;
+    justify-content: center;
 }
 
 .day-cell {
-    aspect-ratio: 1;
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: none;
     cursor: pointer;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 500;
     transition: all 0.2s;
     position: relative;
@@ -349,12 +381,11 @@ main {
 /* 延長工時顯示 */
 .overtime-info {
     text-align: center;
-    margin-bottom: 10px;
-    padding: 10px 15px;
+    padding: 10px 12px;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 5px;
+    border-radius: 6px;
     border: 1px solid #dee2e6;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     color: #495057;
 }
@@ -370,10 +401,21 @@ main {
     color: #6c757d;
 }
 
+/* 底部控制區 */
+.bottom-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    margin-top: auto;
+    margin-bottom: 8px;
+}
+
 /* 按鈕樣式 */
 .controls {
     display: flex;
-    gap: 10px;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .btn {
@@ -421,9 +463,14 @@ main {
 
 /* 進度顯示 */
 .progress-section {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    flex: 0 0 auto;
+    margin-top: 2px;
 }
 
 .progress-header h3 {
@@ -447,16 +494,17 @@ main {
 }
 
 .progress-log {
-    background: #f9f9f9;
+    background: white;
     border: 1px solid #ddd;
     border-radius: 4px;
-    height: 120px;
+    flex: 1;
     overflow-y: auto;
-    padding: 10px;
-    margin-bottom: 15px;
+    padding: 8px;
+    margin-bottom: 10px;
     font-family: monospace;
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.3;
+    height: 80px;
 }
 
 .log-entry {

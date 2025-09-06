@@ -112,6 +112,7 @@ class PopupController {
     
     handleAutofillComplete(message) {
         this.isExecuting = false;
+        this.stopProcessBtn.style.display = 'none';
         this.startAutofillBtn.disabled = false;
         this.clearAllBtn.disabled = false;
         
@@ -405,7 +406,7 @@ class PopupController {
         if (this.isExecuting) return;
         
         this.isExecuting = true;
-        this.progressSection.style.display = 'block';
+        this.stopProcessBtn.style.display = 'block';
         this.startAutofillBtn.disabled = true;
         this.clearAllBtn.disabled = true;
         
@@ -446,16 +447,17 @@ class PopupController {
             
         } catch (error) {
             this.logMessage(`錯誤: ${error.message}`, 'error');
+            this.isExecuting = false;
+            this.stopProcessBtn.style.display = 'none';
+            this.startAutofillBtn.disabled = false;
+            this.clearAllBtn.disabled = false;
         }
-        
-        this.isExecuting = false;
-        this.startAutofillBtn.disabled = false;
-        this.clearAllBtn.disabled = false;
     }
     
     
     stopProcess() {
         this.isExecuting = false;
+        this.stopProcessBtn.style.display = 'none';
         this.startAutofillBtn.disabled = false;
         this.clearAllBtn.disabled = false;
         this.logMessage('用戶取消執行', 'info');
