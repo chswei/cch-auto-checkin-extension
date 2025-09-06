@@ -118,7 +118,7 @@ class AutoPunchInHandler {
             this.notifyComplete(true);
             
             // 確保所有處理完全結束，停止任何後續操作
-            this.logMessage('自動打卡系統已停止運行', 'info');
+            this.logMessage('自動打卡完成！', 'success');
             
         } catch (error) {
             this.logMessage(`執行過程發生錯誤: ${error.message}`, 'error');

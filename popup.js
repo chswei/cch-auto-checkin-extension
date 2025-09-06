@@ -42,7 +42,7 @@ class PopupController {
         // 進度顯示
         this.progressSection = document.getElementById('progressSection');
         this.progressFill = document.getElementById('progressFill');
-        this.progressLog = document.getElementById('progressLog');
+        this.progressText = document.getElementById('progressText');
         this.stopProcessBtn = document.getElementById('stopProcess');
     }
     
@@ -96,8 +96,7 @@ class PopupController {
             '自動打卡失敗',
             '用戶取消執行',
             '錯誤:',
-            '指令已發送到頁面',
-            '自動打卡系統已停止運行'
+            '自動打卡完成！'
         ];
         
         // 檢查訊息是否包含重要關鍵詞
@@ -443,7 +442,6 @@ class PopupController {
                 data: workDays
             });
             
-            this.logMessage('指令已發送到頁面', 'info');
             
         } catch (error) {
             this.logMessage(`錯誤: ${error.message}`, 'error');
@@ -464,17 +462,14 @@ class PopupController {
     }
     
     logMessage(message, type = 'info') {
-        const entry = document.createElement('div');
-        entry.className = `log-entry ${type}`;
-        entry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
-        
-        this.progressLog.appendChild(entry);
-        this.progressLog.scrollTop = this.progressLog.scrollHeight;
+        this.progressText.textContent = message;
+        this.progressText.className = `progress-text ${type}`;
     }
     
     updateProgress(current, total) {
         const percentage = Math.round((current / total) * 100);
         this.progressFill.style.width = `${percentage}%`;
+        this.progressText.textContent = `${current}/${total} - 進度 ${percentage}%`;
     }
     
     
