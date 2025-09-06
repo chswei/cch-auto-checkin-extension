@@ -88,15 +88,10 @@ class PopupController {
     filterAndLogMessage(message, messageType) {
         // 只顯示用戶關心的重要訊息
         const importantKeywords = [
-            '開始自動打卡',
-            '共需處理',
-            '號打卡完成',
-            '所有打卡記錄處理完成',
-            '自動打卡完成',
-            '自動打卡失敗',
-            '用戶取消執行',
+            '用戶停止執行',
             '錯誤:',
-            '自動打卡完成！'
+            '自動打卡完成！',
+            '號時發生錯誤' // 為了匹配重試訊息
         ];
         
         // 檢查訊息是否包含重要關鍵詞
@@ -118,7 +113,13 @@ class PopupController {
         if (message.success) {
             this.logMessage('自動打卡完成！', 'success');
         } else {
-            this.logMessage(`自動打卡失敗: ${message.error}`, 'error');
+            // 區分用戶停止和真正的錯誤
+            if (message.error && message.error.includes('用戶停止執行')) {
+                this.logMessage('用戶停止執行', 'info');
+            } else {
+                // 真正的失敗情況（實際上很少發生）
+                this.logMessage(`自動打卡失敗: ${message.error}`, 'error');
+            }
         }
     }
     
@@ -414,12 +415,12 @@ class PopupController {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             
             if (!tab.url.includes('dpt.cch.org.tw/EIP')) {
-                this.logMessage('錯誤: 請先導航到彰基EIP網站', 'error');
+                this.logMessage('錯誤: 請先進入醫師出勤系統', 'error');
                 return;
             }
             
             if (!tab.url.includes('/Main/Resident/MonthSettlement')) {
-                this.logMessage('錯誤: 請導航到月結算頁面', 'error');
+                this.logMessage('錯誤: 請先進入打卡補登作業頁面', 'error');
                 return;
             }
             
@@ -433,8 +434,7 @@ class PopupController {
             );
             
             const workDays = schedule.filter(day => day.shift && day.times);
-            this.logMessage('開始自動打卡...', 'info');
-            this.logMessage(`共需處理 ${workDays.length} 天`, 'info');
+            // 開始執行（進度顯示已足夠）
             
             // 直接透過postMessage發送給content script
             await chrome.tabs.sendMessage(tab.id, {
@@ -453,12 +453,25 @@ class PopupController {
     }
     
     
-    stopProcess() {
+    async stopProcess() {
         this.isExecuting = false;
         this.stopProcessBtn.style.display = 'none';
         this.startAutofillBtn.disabled = false;
         this.clearAllBtn.disabled = false;
-        this.logMessage('用戶取消執行', 'info');
+        
+        // 發送停止消息給 content script
+        try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tab && tab.url.includes('dpt.cch.org.tw/EIP')) {
+                await chrome.tabs.sendMessage(tab.id, {
+                    type: 'STOP_AUTOFILL'
+                });
+            }
+        } catch (error) {
+            // 靜默失敗，不顯示錯誤
+        }
+        
+        this.logMessage('用戶停止執行', 'info');
     }
     
     logMessage(message, type = 'info') {
