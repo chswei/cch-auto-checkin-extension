@@ -65,17 +65,10 @@ class DateUtils {
         return `${year}/${month + 1}/${date}`;
     }
     
-    // 格式化日期為 MM/DD
-    static formatShortDate(month, date) {
-        return `${String(month + 1).padStart(2, '0')}/${String(date).padStart(2, '0')}`;
-    }
-    
     // 檢查是否為今天
     static isToday(year, month, date) {
         const today = new Date();
-        return year === today.getFullYear() && 
-               month === today.getMonth() && 
-               date === today.getDate();
+        return year === today.getFullYear() && month === today.getMonth() && date === today.getDate();
     }
     
     // 檢查是否為週末
@@ -99,28 +92,15 @@ class ScheduleRules {
     
     // 根據日期和類型決定班別
     static getShiftType(year, month, date, isOnCall = false, isLeave = false) {
-        if (isLeave) {
-            return null; // 請假日不需要班別
-        }
+        if (isLeave) return null;
         
         const dayOfWeek = DateUtils.getDayOfWeek(year, month, date);
         
-        if (isOnCall) {
-            // 值班日：週日用DW6，平日用DW2
-            return dayOfWeek === 0 ? 'DW6' : 'DW2';
-        }
+        if (isOnCall) return dayOfWeek === 0 ? 'DW6' : 'DW2';
         
-        // 一般上班日
-        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-            // 週一到週五：C02班別
-            return 'C02';
-        } else if (dayOfWeek === 6) {
-            // 週六：W02班別
-            return 'W02';
-        } else {
-            // 週日：一般不上班
-            return null;
-        }
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) return 'C02';
+        if (dayOfWeek === 6) return 'W02';
+        return null;
     }
     
     // 檢查是否應該跳過此日期
@@ -128,24 +108,17 @@ class ScheduleRules {
         const currentDateStr = DateUtils.formatDate(year, month, date);
         const dayOfWeek = DateUtils.getDayOfWeek(year, month, date);
         
-        // 請假日直接跳過
-        if (leaveDays.has(currentDateStr)) {
-            return true;
-        }
+        if (leaveDays.has(currentDateStr)) return true;
         
-        // 檢查是否為值班隔日
+        // 檢查值班隔日
         const yesterday = new Date(year, month, date - 1);
         const yesterdayStr = DateUtils.formatDate(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
-        if (onCallDays.has(yesterdayStr)) {
-            return true;
-        }
+        if (onCallDays.has(yesterdayStr)) return true;
         
-        // 檢查週日值班的前一天週六
+        // 檢查週日值班前週六
         const tomorrow = new Date(year, month, date + 1);
         const tomorrowStr = DateUtils.formatDate(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
-        if (dayOfWeek === 6 && tomorrow.getDay() === 0 && onCallDays.has(tomorrowStr)) {
-            return true;
-        }
+        if (dayOfWeek === 6 && tomorrow.getDay() === 0 && onCallDays.has(tomorrowStr)) return true;
         
         return false;
     }
@@ -168,15 +141,11 @@ class ScheduleGenerator {
             const isFuture = this.isFutureDate(year, month, date);
             
             if (isToday || isFuture) {
-                // 跳過今天和未來的日期
                 schedule.push({
-                    date,
-                    dateStr,
-                    dayOfWeek,
+                    date, dateStr, dayOfWeek,
                     status: 'skip',
                     reason: isToday ? '今天不可打卡' : '未來日期不可打卡',
-                    shift: null,
-                    times: null
+                    shift: null, times: null
                 });
                 continue;
             }
@@ -187,51 +156,36 @@ class ScheduleGenerator {
             const shouldSkip = ScheduleRules.shouldSkipDate(year, month, date, onCallDays, leaveDays);
             
             if (shouldSkip && !isLeave) {
-                // 跳過日（值班隔日或週日值班前週六）
                 schedule.push({
-                    date,
-                    dateStr,
-                    dayOfWeek,
+                    date, dateStr, dayOfWeek,
                     status: 'skip',
                     reason: this.getSkipReason(year, month, date, onCallDays, leaveDays),
-                    shift: null,
-                    times: null
+                    shift: null, times: null
                 });
             } else if (isLeave) {
-                // 請假日
                 schedule.push({
-                    date,
-                    dateStr,
-                    dayOfWeek,
-                    status: 'leave',
-                    reason: '請假',
-                    shift: null,
-                    times: null
+                    date, dateStr, dayOfWeek,
+                    status: 'leave', reason: '請假',
+                    shift: null, times: null
                 });
             } else {
-                // 需要打卡的日期
                 const shiftType = ScheduleRules.getShiftType(year, month, date, isOnCall, isLeave);
                 
                 if (shiftType) {
                     const shift = ScheduleRules.SHIFT_TYPES[shiftType];
-                    
-                    // 如果是加班日，動態調整C02班別的結束時間
                     let endTime = shift.endTime;
                     let shiftName = shift.name;
+                    
                     if (isOvertime && shiftType === 'C02') {
                         endTime = '20:00';
                         shiftName = 'C02：8-20(加班)';
                     }
                     
                     schedule.push({
-                        date,
-                        dateStr,
-                        dayOfWeek,
+                        date, dateStr, dayOfWeek,
                         status: isOnCall ? 'oncall' : (isOvertime ? 'overtime' : 'regular'),
                         reason: isOnCall ? '值班' : (isOvertime ? '加班' : '一般上班'),
-                        shift: shiftType,
-                        shiftName: shiftName,
-                        isOvertime: isOvertime,
+                        shift: shiftType, shiftName, isOvertime,
                         times: {
                             start: shift.startTime,
                             end: endTime,
@@ -248,14 +202,10 @@ class ScheduleGenerator {
     static getSkipReason(year, month, date, onCallDays, leaveDays) {
         const dayOfWeek = DateUtils.getDayOfWeek(year, month, date);
         
-        // 檢查值班隔日
         const yesterday = new Date(year, month, date - 1);
         const yesterdayStr = DateUtils.formatDate(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
-        if (onCallDays.has(yesterdayStr)) {
-            return '值班隔日';
-        }
+        if (onCallDays.has(yesterdayStr)) return '值班隔日';
         
-        // 檢查週日值班前週六
         const tomorrow = new Date(year, month, date + 1);
         const tomorrowStr = DateUtils.formatDate(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
         if (dayOfWeek === 6 && tomorrow.getDay() === 0 && onCallDays.has(tomorrowStr)) {
@@ -270,7 +220,7 @@ class ScheduleGenerator {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         targetDate.setHours(0, 0, 0, 0);
-        return targetDate > today; // 只有未來日期返回 true，不包含今天
+        return targetDate > today;
     }
 }
 
