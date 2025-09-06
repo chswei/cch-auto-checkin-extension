@@ -104,7 +104,7 @@ main {
     flex-direction: column;
     flex: 1;
     justify-content: space-between;
-    margin-top: 10px; /* Perfectly align with calendar-container */
+    margin-top: 6px; /* Perfectly align with calendar-container */
 }
 
 .month-btn {
