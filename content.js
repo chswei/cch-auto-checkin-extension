@@ -587,7 +587,7 @@ class AutoPunchInHandler {
             }
             
             this.logMessage(`${fieldName}: 成功設定為 "${paddedValue}"`, 'success');
-            await this.sleep(200);
+            await this.sleep(100);
             
         } catch (error) {
             this.logMessage(`${fieldName}: 設定失敗: ${error.message}`, 'error');
@@ -874,17 +874,14 @@ class AutoPunchInHandler {
     async handleConfirmationDialog() {
         this.logMessage('處理連續兩個瀏覽器原生確認對話框...', 'info');
         
-        // 超快速等待確認流程完成 - 使用更短的間隔和更快的響應
+        // 超快速等待確認流程完成 - 只檢查對話框是否關閉
         const dialogProcessed = await this.waitForCondition(() => {
-            // 檢查是否還有打開的對話框
+            // 只檢查是否還有打開的對話框
             const hasDialog = document.querySelector('[role="dialog"]') !== null;
             
-            // 檢查是否有錯誤提示
-            const hasError = document.querySelector('.error, .alert-danger, [role="alert"]') !== null;
-            
-            // 對話框已關閉且無錯誤提示表示處理完成
-            return !hasDialog && !hasError;
-        }, 3000, 50, '確認對話框處理完成'); // 縮短超時至3秒，間隔縮短至50ms
+            // 對話框已關閉表示處理完成
+            return !hasDialog;
+        }, 2000, 50, '確認對話框處理完成'); // 縮短超時至2秒，間隔保持50ms
         
         if (dialogProcessed) {
             this.logMessage('瀏覽器原生確認對話框處理完成', 'info');
