@@ -168,7 +168,6 @@ class AutoPunchInHandler {
                 if (!this.checkRunning()) return;
                 
                 editButton.click();
-                await this.sleep(1000);
                 
                 const dialog = await this.waitForDialogWithValidation(5000);
                 if (!dialog) {
