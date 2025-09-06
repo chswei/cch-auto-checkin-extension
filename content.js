@@ -755,11 +755,8 @@ class AutoPunchInHandler {
             // 點擊對話框內的送出按鈕提交打卡資料
             submitButton.click();
             
-            // 等待確認對話框出現並自動處理
-            await this.sleep(300);
-            
-            // 處理提交後的確認對話框
-            await this.handleConfirmationDialog();
+            // 等待確認對話框出現並自動處理（dialog-override.js 會立即處理）
+            await this.sleep(100);
             
         } catch (error) {
             this.logMessage(`提交表單失敗: ${error.message}`, 'error');
@@ -767,11 +764,6 @@ class AutoPunchInHandler {
         }
     }
     
-    async handleConfirmationDialog() {
-        // 瀏覽器原生確認對話框已由 dialog-override.js 自動處理
-        // 等待300ms確保 alert 處理完成
-        await this.sleep(300);
-    }
     
     
     sleep(ms) {
