@@ -365,9 +365,6 @@ class PopupController {
     }
     
     updateButtonState() {
-        // 只有在有選擇日期時才啟用按鈕
-        this.startAutofillBtn.disabled = (this.onCallDays.size === 0 && this.leaveDays.size === 0 && this.overtimeDays.size === 0);
-        
         // 更新延長工時顯示
         this.updateOvertimeHours();
     }
