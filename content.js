@@ -183,7 +183,7 @@ class AutoPunchInHandler {
         
         try {
             // 初始延遲，確保頁面穩定
-            await this.sleep(200);
+            await this.sleep(1000);
             
             for (let i = 0; i < this.workDays.length && this.checkRunning(); i++) {
                 this.currentIndex = i;

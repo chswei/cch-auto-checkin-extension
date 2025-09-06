@@ -47,3 +47,6 @@ build/
 
 # Playwright MCP 生成的檔案
 .playwright-mcp/
+
+# GitHub workflows and configs
+.github/
