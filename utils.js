@@ -82,12 +82,12 @@ class DateUtils {
  * 排班規則處理
  */
 class ScheduleRules {
-    // 班別定義
+    // 班別定義 - 必須與 content.js 的 SHIFT_MAPPING 保持一致
     static SHIFT_TYPES = {
         C02: { name: 'C02：8-17半(無休)', startTime: '08:00', endTime: '17:30' },
-        W02: { name: 'W02：8-12半(無休)', startTime: '08:00', endTime: '12:00' },
-        DW2: { name: 'DW2：8-隔12全', startTime: '08:00', endTime: '12:00', isOvernight: true },
-        DW6: { name: 'DW6：8-隔12全', startTime: '08:00', endTime: '12:00', isOvernight: true }
+        W02: { name: 'W02：六8-12', startTime: '08:00', endTime: '12:00' },
+        DW2: { name: 'DW2：平值8-隔日12', startTime: '08:00', endTime: '12:00', isOvernight: true },
+        DW6: { name: 'DW6：假8-隔日12', startTime: '08:00', endTime: '12:00', isOvernight: true }
     };
     
     // 根據日期和類型決定班別

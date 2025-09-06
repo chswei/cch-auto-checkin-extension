@@ -182,7 +182,8 @@ class AutoPunchInHandler {
         this.workDays = workDaysData;
         
         try {
-            // 開始處理（進度顯示已足夠）
+            // 初始延遲，確保頁面穩定
+            await this.sleep(200);
             
             for (let i = 0; i < this.workDays.length && this.checkRunning(); i++) {
                 this.currentIndex = i;
@@ -240,6 +241,9 @@ class AutoPunchInHandler {
                 
                 editButton.click();
                 
+                // 等待對話框完全載入
+                await this.sleep(500);
+                
                 const dialog = await this.waitForDialogWithValidation(5000);
                 if (!dialog) {
                     if (!this.checkRunning()) return;
@@ -274,14 +278,12 @@ class AutoPunchInHandler {
     }
     
     async findEditButtonByDate(date) {
-        // 尋找編輯按鈕
-        
         try {
             // 智能等待Angular Material表格載入完成
             const tableFound = await this.waitForCondition(() => {
                 const matRow = document.querySelector('mat-row');
                 return matRow !== null;
-            }, 5000, 100, 'Angular Material表格載入');
+            }, 5000, 100);
             
             if (!tableFound) {
                 throw new Error('找不到打卡記錄表格');
@@ -319,15 +321,11 @@ class AutoPunchInHandler {
             };
         }
         
-        // 開始填寫班別資料
-        
         // 1. 設定班別（跳過部門選擇，保持預設值）
         await this.selectShift(dialog, workDay.shift);
-        // 移除固定延遲，直接進行下一步
         
         // 2. 設定簽退時間
         await this.setCheckOutTime(dialog, timeSetting.checkOut, timeSetting.isOvernight);
-        // 移除固定延遲，提升響應速度
         
         // 已完成班別設定
     }
@@ -337,44 +335,39 @@ class AutoPunchInHandler {
         if (!shiftName) {
             throw new Error(`未知的班別對應: ${shift}`);
         }
-        
-        // 開始選擇班別
-        
         try {
             // 優先查找原生 select 元素
             const shiftSelect = dialog.querySelector('select[aria-label="班別"]');
             
             if (shiftSelect) {
                 // 原生 select 元素的處理方式
-                // 找到原生 select 元素
                 
                 // 直接設定值
                 shiftSelect.value = shift;
                 shiftSelect.dispatchEvent(new Event('change', { bubbles: true }));
                 
-                // 成功選擇班別
-                await this.sleep(200);
+                // 成功選擇班別，等待選擇生效
+                await this.sleep(400);
                 return;
             }
             
             // 查找班別的 combobox 元素 
             const comboboxes = dialog.querySelectorAll('[role="combobox"]');
-            // 找到 combobox
             
             if (comboboxes.length >= 2) {
-                // 第二個 combobox 通常是班別選擇器（第一個是部門）
+                // 班別選擇器一定是第二個 combobox（第一個是部門）
                 const shiftCombobox = comboboxes[1];
-                // 找到班別 combobox 選擇器
                 
                 // 使用 combobox 專用方法選擇班別
                 await this.selectDropdownValue(shiftCombobox, shiftName, '班別', 'combobox');
+                
+                this.logMessage(`成功選擇班別: ${shiftName}`, 'success');
+                await this.sleep(400);
                 return;
             } else {
-                throw new Error(`combobox 數量不足，預期至少2個，實際找到 ${comboboxes.length} 個`);
+                // combobox 數量不足
+                throw new Error(`找不到班別選擇元素。預期至少 2 個 combobox（部門、班別），實際只有 ${comboboxes.length} 個。`);
             }
-            
-            this.logMessage(`成功選擇班別: ${shiftName}`, 'success');
-            await this.sleep(200);
             
         } catch (error) {
             this.logMessage(`選擇班別失敗: ${error.message}`, 'error');
@@ -384,8 +377,6 @@ class AutoPunchInHandler {
     
     
     async setCheckOutTime(dialog, timeSettings, isOvernight) {
-        // 設定簽退時間
-        
         try {
             // 如果是跨夜班別，需要先設定簽退日期
             if (isOvernight) {
@@ -395,22 +386,12 @@ class AutoPunchInHandler {
             
             // 查找簽退時間的 mat-select 元素
             const allMatSelects = dialog.querySelectorAll('mat-select[name="HourStart"], mat-select[name="MinuteStart"]');
-            // 找到時間相關的 mat-select 元素
             
-            // 記錄所有時間相關元素的信息
-            for (let i = 0; i < allMatSelects.length; i++) {
-                const element = allMatSelects[i];
-                const id = element.id || 'no-id';
-                const name = element.getAttribute('name') || 'no-name';
-                // 時間選擇器資訊
-            }
             
             if (allMatSelects.length >= 4) {
                 // 假設後兩個是簽退時間：簽退小時、簽退分鐘
                 const hourSelect = allMatSelects[2];  // 第3個是簽退小時
                 const minuteSelect = allMatSelects[3]; // 第4個是簽退分鐘
-                
-                // 使用第3、4個時間選擇器作為簽退時間
                 
                 // 設定簽退小時
                 await this.selectDropdownValue(hourSelect, timeSettings.hour, '簽退小時', 'matselect');
@@ -433,8 +414,16 @@ class AutoPunchInHandler {
         if (!this.isRunning) return;
         
         try {
-            const paddedValue = String(value).padStart(2, '0');
-            const searchValues = [paddedValue, String(parseInt(value)), value];
+            // 對於時間選擇（數字），確保兩位數格式；對於班別名稱（字串），直接使用
+            let searchValues;
+            if (fieldName.includes('小時') || fieldName.includes('分鐘')) {
+                // 時間選擇：確保兩位數格式 '08'
+                const paddedValue = String(value).padStart(2, '0');
+                searchValues = [paddedValue];
+            } else {
+                // 班別名稱：直接使用原值
+                searchValues = [value];
+            }
             
             // 檢查當前值是否已正確
             const currentValue = this.getCurrentValue(element, type);
@@ -445,7 +434,7 @@ class AutoPunchInHandler {
             await this.sleep(300);
             
             // 等待選項出現
-            const options = await this.waitForOptions(type, fieldName);
+            const options = await this.waitForOptions(type);
             if (!options.length) {
                 throw new Error(`${fieldName}: 選項未在預期時間內出現`);
             }
@@ -490,7 +479,7 @@ class AutoPunchInHandler {
         }
     }
     
-    async waitForOptions(type, fieldName) {
+    async waitForOptions(type) {
         const selectors = type === 'combobox' ? ['option'] : ['mat-option', '.mat-option', '[role="option"]'];
         
         let options = [];
@@ -503,7 +492,7 @@ class AutoPunchInHandler {
                 }
             }
             return false;
-        }, 3000, 150, `${fieldName} 選項出現`);
+        }, 3000, 150);
         
         return appeared ? options : [];
     }
@@ -511,9 +500,13 @@ class AutoPunchInHandler {
     selectOptionByValue(options, searchValues) {
         for (const option of options) {
             const optionText = option.textContent?.trim() || '';
-            if (searchValues.includes(optionText)) {
-                option.click();
-                return true;
+            // 寬鬆匹配：檢查選項文字是否包含搜尋值的關鍵部分
+            for (const searchValue of searchValues) {
+                // 檢查完全匹配或部分匹配（例如 "DW2" 在 "DW2：平值8-隔日12" 中）
+                if (optionText === searchValue || optionText.startsWith(searchValue + '：')) {
+                    option.click();
+                    return true;
+                }
             }
         }
         return false;
@@ -534,7 +527,7 @@ class AutoPunchInHandler {
             await this.waitForCondition(() => {
                 const calendarGrid = document.querySelector('gridcell button, .mat-calendar-body');
                 return calendarGrid !== null;
-            }, 3000, 100, '日曆展開');
+            }, 3000, 100);
             
             // 計算隔日日期 - 從簽到日期輸入框獲取工作日期
             const checkinDateInput = dialog.querySelector('textbox[disabled]') || 
@@ -573,7 +566,6 @@ class AutoPunchInHandler {
             
             const tomorrow = new Date(workDate);
             tomorrow.setDate(tomorrow.getDate() + 1);
-            // 計算隔日
             
             const targetYear = tomorrow.getFullYear();
             const targetMonth = tomorrow.getMonth() + 1; // JavaScript month is 0-based
@@ -581,7 +573,6 @@ class AutoPunchInHandler {
             
             // 構建目標日期字符串，格式如 "2025/08/02"
             const targetDateStr = `${targetYear}/${String(targetMonth).padStart(2, '0')}/${String(targetDate).padStart(2, '0')}`;
-            
             // 尋找隔日日期
             
             // 檢查是否需要導航到下個月（當隔日是下個月第一天時）
@@ -601,7 +592,7 @@ class AutoPunchInHandler {
                     await this.waitForCondition(() => {
                         const dateButtons = document.querySelectorAll('button[aria-label*="2025/"]');
                         return dateButtons.length > 0;
-                    }, 2000, 100, '日曆更新到下個月');
+                    }, 2000, 100);
                 } else {
                     // 找不到下個月按鈕，嘗試其他方法
                     // 嘗試其他可能的選擇器
@@ -673,7 +664,8 @@ class AutoPunchInHandler {
                     const hasSelects = dialog.querySelectorAll('select, [role="combobox"]').length > 0;
                     
                     if ((hasTitle || hasContent) && hasSelects) {
-                        await this.sleep(300);
+                        // 對話框已出現，再等待一下確保所有元素載入完成
+                        await this.sleep(500);
                         return dialog;
                     }
                 }
@@ -688,7 +680,7 @@ class AutoPunchInHandler {
         const dialogClosed = await this.waitForCondition(() => {
             if (!this.checkRunning()) return true;
             return !document.querySelector('[role="dialog"]');
-        }, 5000, 50, '對話框關閉');
+        }, 5000, 50);
         
         if (!dialogClosed && this.checkRunning()) {
             throw new Error('對話框未在預期時間內關閉');
@@ -791,16 +783,15 @@ class AutoPunchInHandler {
      * @param {Function} condition - 條件檢查函數，返回 true 表示條件滿足
      * @param {number} timeout - 最大等待時間（毫秒）
      * @param {number} interval - 檢查間隔（毫秒）
-     * @param {string} description - 等待描述（用於日誌）
      * @returns {Promise<boolean>} 條件是否滿足
      */
-    async waitForCondition(condition, timeout = 5000, interval = 100, description = '') {
+    async waitForCondition(condition, timeout = 5000, interval = 100) {
         const startTime = Date.now();
         
         while (Date.now() - startTime < timeout && this.checkRunning()) {
             try {
                 if (await condition()) return true;
-            } catch (error) {
+            } catch {
                 // 條件檢查失敗，繼續等待
             }
             await this.sleep(interval);
@@ -809,12 +800,6 @@ class AutoPunchInHandler {
         return false;
     }
     
-    /**
-     * 快速等待元素出現
-     * @param {string} selector - 元素選擇器
-     * @param {number} timeout - 最大等待時間
-     * @returns {Promise<Element|null>} 找到的元素
-     */
     
     notifyComplete(success, error = null) {
         this.sendMessageSafely({
@@ -849,14 +834,14 @@ class AutoPunchInHandler {
     
     sendMessageSafely(message) {
         try {
-            chrome.runtime.sendMessage(message, (response) => {
+            chrome.runtime.sendMessage(message, () => {
                 // 檢查是否有錯誤
                 if (chrome.runtime.lastError) {
                     // popup 已關閉或不存在，這是正常情況
                 }
             });
-        } catch (error) {
-            // 忽略通信錯誤
+        } catch {
+            // 忽略通信錯誤 - popup 可能已關閉
         }
     }
 }
@@ -870,7 +855,3 @@ if (document.readyState === 'loading') {
     new AutoPunchInHandler();
 }
 
-// 檢查是否在正確的頁面
-if (window.location.href.includes('dpt.cch.org.tw/EIP')) {
-} else {
-}
