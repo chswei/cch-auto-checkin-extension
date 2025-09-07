@@ -20,6 +20,8 @@ class AutoPunchInHandler {
         this.maxRetries = 3;
         this.retryDelay = 1500;
         this.userStopped = false;
+        this.currentMode = null; // 'autofill' 或 'remove'
+        this.removeData = null; // 存儲移除紀錄的參數
         
         // 班別對應表 - 根據實際網頁選項更新
         this.SHIFT_MAPPING = {
@@ -107,6 +109,8 @@ class AutoPunchInHandler {
         this.isRunning = true;
         this.userStopped = false;
         this.currentIndex = 0;
+        this.currentMode = 'remove';
+        this.removeData = data;
         
         try {
             // 初始延遲，確保頁面穩定
@@ -265,19 +269,23 @@ class AutoPunchInHandler {
     }
 
     async resumeAutofill() {
-        if (this.userStopped && this.workDays && this.workDays.length > 0) {
+        if (this.userStopped) {
             this.isRunning = true;
             this.userStopped = false;
             this.logMessage('恢復執行中...', 'info');
             
-            // 先顯示當前進度
-            this.updateProgress(this.currentIndex, this.workDays.length);
-            
-            // 先確保對話框被關閉，然後從當前索引繼續執行
+            // 先確保對話框被關閉
             await this.ensureDialogClosed();
             await this.sleep(500); // 等待對話框完全關閉
             
-            this.continueFromCurrentIndex();
+            if (this.currentMode === 'autofill' && this.workDays && this.workDays.length > 0) {
+                // 先顯示當前進度
+                this.updateProgress(this.currentIndex, this.workDays.length);
+                this.continueFromCurrentIndex();
+            } else if (this.currentMode === 'remove' && this.removeData) {
+                // 恢復移除紀錄操作
+                this.continueRemoveRecords();
+            }
         }
     }
 
@@ -324,6 +332,51 @@ class AutoPunchInHandler {
             }
         }
     }
+
+    async continueRemoveRecords() {
+        const { startDay, endDay } = this.removeData;
+        
+        try {
+            // 從當前索引繼續處理移除紀錄
+            for (let day = this.currentIndex; day <= endDay && this.checkRunning(); day++) {
+                this.currentIndex = day;
+                
+                try {
+                    await this.removeSingleDayRecord(day);
+                    // 只有在成功處理完單日後才更新進度
+                    if (this.checkRunning()) {
+                        this.updateProgress(day, endDay);
+                    }
+                } catch (error) {
+                    if (!this.checkRunning()) return;
+                    this.logMessage(`處理第 ${day} 天時發生錯誤: ${error.message}`, 'warning');
+                }
+                
+                if (day < endDay && this.checkRunning()) {
+                    await this.sleep(500);
+                }
+            }
+            
+            // 檢查是否正常完成（沒有被用戶停止）
+            if (this.checkRunning()) {
+                this.notifyComplete(true, null, true);  // 第三個參數表示是刪除操作
+                this.logMessage('所有打卡紀錄已移除！', 'success');
+            }
+            
+        } catch (error) {
+            if (this.userStopped) {
+                // 用戶停止，不當作錯誤處理
+                return;
+            }
+            // 執行過程發生錯誤
+            this.notifyComplete(false, error.message);
+        } finally {
+            if (!this.userStopped) {
+                // 只有在正常完成時才重置
+                this.isRunning = false;
+            }
+        }
+    }
     
     async startAutofill(workDaysData) {
         if (this.isRunning) {
@@ -335,6 +388,7 @@ class AutoPunchInHandler {
         this.userStopped = false;
         this.currentIndex = 0;
         this.workDays = workDaysData;
+        this.currentMode = 'autofill';
         
         try {
             // 初始延遲，確保頁面穩定

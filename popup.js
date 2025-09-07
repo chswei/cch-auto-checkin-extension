@@ -424,6 +424,7 @@ class PopupController {
         this.isExecuting = true;
         this.stopProcessBtn.style.display = 'block';
         this.startAutofillBtn.disabled = true;
+        this.removeAllRecordsBtn.disabled = true;
         this.clearAllBtn.disabled = true;
         
         try {
@@ -568,15 +569,20 @@ class PopupController {
         }
     }
     
-    logMessage(message, type = 'info') {
+    logMessage(message, type = null) {
         this.progressText.textContent = message;
-        this.progressText.className = `progress-text ${type}`;
+        if (type && ['success', 'error', 'warning', 'info'].includes(type)) {
+            this.progressText.className = `progress-text ${type}`;
+        } else {
+            this.progressText.className = 'progress-text';
+        }
     }
     
     updateProgress(current, total) {
         const percentage = Math.round((current / total) * 100);
         this.progressFill.style.width = `${percentage}%`;
         this.progressText.textContent = `${current}/${total} - 進度 ${percentage}%`;
+        this.progressText.className = 'progress-text';
     }
     
     
