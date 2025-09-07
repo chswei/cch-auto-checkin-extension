@@ -242,7 +242,7 @@ class AutoPunchInHandler {
                 editButton.click();
                 
                 // 等待對話框完全載入
-                await this.sleep(500);
+                await this.sleep(1000);
                 
                 const dialog = await this.waitForDialogWithValidation(5000);
                 if (!dialog) {
