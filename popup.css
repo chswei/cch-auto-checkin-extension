@@ -9,7 +9,7 @@
 
 html,
 body {
-    width: 700px;
+    width: 620px;
     height: 550px;
     margin: 0;
     padding: 0;
@@ -24,7 +24,7 @@ body {
 }
 
 .container {
-    width: 700px;
+    width: 620px;
     height: 550px;
     background: white;
     border-radius: 0;
@@ -79,7 +79,7 @@ main {
 }
 
 .right-panel {
-    width: 280px;
+    width: 200px;
     position: relative;
     height: 100%;
     display: flex;
