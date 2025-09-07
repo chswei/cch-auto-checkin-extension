@@ -38,6 +38,7 @@ class PopupController {
         
         // 控制按鈕
         this.clearAllBtn = document.getElementById('clearAll');
+        this.removeAllRecordsBtn = document.getElementById('removeAllRecords');
         this.startAutofillBtn = document.getElementById('startAutofill');
         
         // 進度顯示
@@ -59,6 +60,7 @@ class PopupController {
         
         // 控制按鈕
         this.clearAllBtn.addEventListener('click', () => this.clearAllSelections());
+        this.removeAllRecordsBtn.addEventListener('click', () => this.startRemoveRecords());
         this.startAutofillBtn.addEventListener('click', () => this.startAutofill());
         this.stopProcessBtn.addEventListener('click', () => this.handleStopResumeClick());
         
@@ -114,8 +116,11 @@ class PopupController {
             this.stopProcessBtn.textContent = '停止執行';
             this.stopProcessBtn.className = 'btn btn-danger';  // 重置為紅色
             this.startAutofillBtn.disabled = false;
+            this.removeAllRecordsBtn.disabled = false;
             this.clearAllBtn.disabled = false;
-            this.logMessage('自動打卡完成！', 'success');
+            // 根據操作類型顯示不同訊息
+            const successMsg = message.isRemoval ? '所有打卡紀錄已移除！' : '自動打卡完成！';
+            this.logMessage(successMsg, 'success');
         } else {
             // 區分用戶停止和真正的錯誤
             if (message.error && message.error.includes('用戶停止執行')) {
@@ -129,6 +134,7 @@ class PopupController {
                 this.stopProcessBtn.textContent = '停止執行';
                 this.stopProcessBtn.className = 'btn btn-danger';  // 重置為紅色
                 this.startAutofillBtn.disabled = false;
+                this.removeAllRecordsBtn.disabled = false;
                 this.clearAllBtn.disabled = false;
                 this.logMessage(`自動打卡失敗: ${message.error}`, 'error');
             }
@@ -388,6 +394,7 @@ class PopupController {
             if (!isCorrectPage) {
                 this.showWarning('非彰基打卡頁面');
                 this.startAutofillBtn.disabled = true;
+                this.removeAllRecordsBtn.disabled = true;
             }
         } catch (error) {
             // 頁面檢查失敗，靜默處理
@@ -461,6 +468,53 @@ class PopupController {
         }
     }
     
+    async startRemoveRecords() {
+        if (this.isExecuting) return;
+        
+        this.isExecuting = true;
+        this.stopProcessBtn.style.display = 'block';
+        this.startAutofillBtn.disabled = true;
+        this.removeAllRecordsBtn.disabled = true;
+        this.clearAllBtn.disabled = true;
+        
+        try {
+            // 檢查當前分頁
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            
+            if (!tab.url.includes('dpt.cch.org.tw/EIP')) {
+                this.logMessage('錯誤: 請先進入醫師出勤系統', 'error');
+                return;
+            }
+            
+            if (!tab.url.includes('/Main/Resident/MonthSettlement')) {
+                this.logMessage('錯誤: 請先進入打卡補登作業頁面', 'error');
+                return;
+            }
+            
+            // 計算處理範圍（第1天到昨天）
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const lastDay = yesterday.getDate();
+            
+            // 發送訊息給 content script
+            await chrome.tabs.sendMessage(tab.id, {
+                type: 'START_REMOVE_RECORDS',
+                data: { 
+                    startDay: 1,
+                    endDay: lastDay
+                }
+            });
+            
+        } catch (error) {
+            this.logMessage(`錯誤: ${error.message}`, 'error');
+            this.isExecuting = false;
+            this.stopProcessBtn.style.display = 'none';
+            this.startAutofillBtn.disabled = false;
+            this.removeAllRecordsBtn.disabled = false;
+            this.clearAllBtn.disabled = false;
+        }
+    }
+    
     
     handleStopResumeClick() {
         if (this.isPaused) {
@@ -476,6 +530,7 @@ class PopupController {
         this.stopProcessBtn.textContent = '恢復執行';
         this.stopProcessBtn.className = 'btn btn-success';  // 綠色按鈕
         this.startAutofillBtn.disabled = true;
+        this.removeAllRecordsBtn.disabled = true;
         this.clearAllBtn.disabled = false;
         
         // 發送停止消息給 content script
@@ -497,6 +552,7 @@ class PopupController {
         this.stopProcessBtn.textContent = '停止執行';
         this.stopProcessBtn.className = 'btn btn-danger';  // 紅色按鈕
         this.startAutofillBtn.disabled = true;
+        this.removeAllRecordsBtn.disabled = true;
         this.clearAllBtn.disabled = true;
         
         // 發送恢復消息給 content script

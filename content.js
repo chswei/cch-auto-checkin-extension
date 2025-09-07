@@ -88,6 +88,9 @@ class AutoPunchInHandler {
             if (message.type === 'START_AUTOFILL') {
                 this.startAutofill(message.data);
                 sendResponse({ status: 'started' });
+            } else if (message.type === 'START_REMOVE_RECORDS') {
+                this.startRemoveRecords(message.data);
+                sendResponse({ status: 'started' });
             } else if (message.type === 'STOP_AUTOFILL') {
                 this.stopAutofill();
                 sendResponse({ status: 'stopped' });
@@ -97,6 +100,158 @@ class AutoPunchInHandler {
             }
             return true;
         });
+    }
+    
+    async startRemoveRecords(data) {
+        const { startDay, endDay } = data;
+        this.isRunning = true;
+        this.userStopped = false;
+        this.currentIndex = 0;
+        
+        try {
+            // 初始延遲，確保頁面穩定
+            await this.sleep(1000);
+            
+            for (let day = startDay; day <= endDay && this.checkRunning(); day++) {
+                this.currentIndex = day;
+                
+                try {
+                    await this.removeSingleDayRecord(day);
+                    // 只有在成功處理完單日後才更新進度
+                    if (this.checkRunning()) {
+                        this.updateProgress(day, endDay);
+                    }
+                } catch (error) {
+                    if (!this.checkRunning()) return;
+                    this.logMessage(`處理第 ${day} 天時發生錯誤: ${error.message}`, 'warning');
+                }
+                
+                if (day < endDay && this.checkRunning()) {
+                    await this.sleep(500);
+                }
+            }
+            
+            // 檢查是否正常完成（沒有被用戶停止）
+            if (this.checkRunning()) {
+                this.notifyComplete(true, null, true);  // 第三個參數表示是刪除操作
+                this.logMessage('所有打卡紀錄已移除！', 'success');
+            }
+            
+        } catch (error) {
+            if (this.userStopped) {
+                // 用戶停止，不當作錯誤處理
+                return;
+            }
+            // 執行過程發生錯誤
+            this.notifyComplete(false, error.message);
+        } finally {
+            if (!this.userStopped) {
+                // 只有在正常完成時才重置
+                this.isRunning = false;
+            }
+        }
+    }
+    
+    async removeSingleDayRecord(date) {
+        for (let retryCount = 0; retryCount < this.maxRetries; retryCount++) {
+            if (!this.checkRunning()) return;
+            
+            try {
+                const editButton = await this.findEditButtonByDate(date);
+                if (!editButton) {
+                    if (!this.checkRunning()) return;
+                    throw new Error(`找不到 ${date} 號的編輯按鈕`);
+                }
+                
+                if (!this.checkRunning()) return;
+                
+                editButton.click();
+                
+                // 等待對話框完全載入
+                await this.sleep(1000);
+                
+                const dialog = await this.waitForDialogWithValidation(5000);
+                if (!dialog) {
+                    if (!this.checkRunning()) return;
+                    throw new Error('打卡對話框未出現或驗證失敗');
+                }
+                
+                if (!this.checkRunning()) return;
+                
+                // 尋找並點擊刪除按鈕
+                await this.clickDeleteButton(dialog);
+                
+                if (!this.checkRunning()) return;
+                
+                await this.waitForDialogCloseWithValidation();
+                
+                return; // 成功完成
+                
+            } catch (error) {
+                if (!this.checkRunning()) return;
+                
+                this.logMessage(`處理 ${date} 號時發生錯誤: ${error.message}（正在自動重試...）`, 'warning');
+                
+                if (retryCount < this.maxRetries - 1) {
+                    await this.sleep(this.retryDelay);
+                    await this.ensureDialogClosed();
+                } else {
+                    if (!this.checkRunning()) return;
+                    throw new Error(`處理 ${date} 號失敗，已重試 ${this.maxRetries} 次: ${error.message}`);
+                }
+            }
+        }
+    }
+    
+    async clickDeleteButton(dialog) {
+        // 尋找垃圾桶（刪除）按鈕
+        let deleteButton = null;
+        
+        // 方法1：找包含 mat-icon 的按鈕，且 mat-icon 的 title 包含「移除」
+        const iconButtons = dialog.querySelectorAll('button:has(mat-icon)');
+        for (const btn of iconButtons) {
+            const icon = btn.querySelector('mat-icon');
+            if (icon && (icon.title?.includes('移除') || icon.title?.includes('刪除'))) {
+                deleteButton = btn;
+                break;
+            }
+        }
+        
+        // 方法2：如果沒找到，嘗試找所有包含 mat-icon 的按鈕中的第二個（通常第一個是編輯，第二個是刪除）
+        if (!deleteButton) {
+            const buttons = dialog.querySelectorAll('button:has(mat-icon)');
+            if (buttons.length >= 2) {
+                deleteButton = buttons[1]; // 第二個按鈕
+            }
+        }
+        
+        // 方法3：如果還是沒找到，找所有 mat-icon 按鈕並檢查父元素
+        if (!deleteButton) {
+            const icons = dialog.querySelectorAll('mat-icon');
+            for (const icon of icons) {
+                const button = icon.closest('button');
+                if (button && icon.textContent?.includes('delete')) {
+                    deleteButton = button;
+                    break;
+                }
+            }
+        }
+        
+        if (deleteButton) {
+            // 檢查按鈕是否可點擊（有紀錄才能刪除）
+            if (!deleteButton.disabled) {
+                deleteButton.click();
+                await this.sleep(100); // dialog-override.js 會自動處理確認對話框
+                this.logMessage(`成功刪除第 ${this.currentIndex} 天的打卡紀錄`, 'info');
+            } else {
+                this.logMessage(`第 ${this.currentIndex} 天無打卡紀錄，跳過`, 'info');
+            }
+        } else {
+            this.logMessage(`第 ${this.currentIndex} 天找不到刪除按鈕，跳過`, 'info');
+        }
+        
+        // 確保對話框關閉
+        await this.ensureDialogClosed();
     }
     
     stopAutofill() {
@@ -793,11 +948,12 @@ class AutoPunchInHandler {
     }
     
     
-    notifyComplete(success, error = null) {
+    notifyComplete(success, error = null, isRemoval = false) {
         this.sendMessageSafely({
             type: 'AUTOFILL_COMPLETE',
             success: success,
-            error: error
+            error: error,
+            isRemoval: isRemoval
         });
     }
     
