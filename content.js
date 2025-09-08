@@ -1032,6 +1032,31 @@ class AutoPunchInHandler {
             total: total,
             percentage: Math.round((current / total) * 100)
         });
+        
+        // 同步執行進度到背景腳本
+        this.saveExecutionProgress(current, total);
+    }
+    
+    // 儲存執行進度到背景腳本
+    async saveExecutionProgress(current, total) {
+        try {
+            await chrome.runtime.sendMessage({
+                type: 'SAVE_EXECUTION_PROGRESS',
+                data: {
+                    current: current,
+                    total: total,
+                    currentIndex: this.currentIndex,
+                    isRunning: this.isRunning,
+                    isPaused: this.userStopped,
+                    currentMode: this.currentMode,
+                    workDays: this.workDays,
+                    removeData: this.removeData,
+                    timestamp: Date.now()
+                }
+            });
+        } catch (error) {
+            // 背景腳本通信失敗，不影響主要功能
+        }
     }
     
     sendMessageSafely(message) {

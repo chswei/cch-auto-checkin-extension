@@ -6,7 +6,8 @@
   
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "storage"
   ],
   
   "action": {
@@ -14,6 +15,10 @@
     "default_title": "彰基自動打卡"
   },
   
+  "background": {
+    "service_worker": "background.js"
+  },
+
   "content_scripts": [
     {
       "matches": ["https://dpt.cch.org.tw/EIP/*"],
