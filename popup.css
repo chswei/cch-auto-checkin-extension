@@ -10,7 +10,7 @@
 html,
 body {
     width: 620px;
-    height: 550px;
+    height: 560px;
     margin: 0;
     padding: 0;
     background: white;
@@ -25,7 +25,7 @@ body {
 
 .container {
     width: 620px;
-    height: 550px;
+    height: 560px;
     background: white;
     border-radius: 0;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -57,7 +57,7 @@ header h1 {
 
 /* 主要內容 */
 main {
-    padding: 12px 17px 12px 12px;
+    padding: 12px 17px 17px 12px;
     flex: 1;
     box-sizing: border-box;
     overflow: hidden;
@@ -107,7 +107,7 @@ main {
     justify-content: space-between;
     align-items: stretch;
     margin-top: 8px;
-    margin-bottom: -3px;
+    margin-bottom: 4px;
 }
 
 .month-btn {
