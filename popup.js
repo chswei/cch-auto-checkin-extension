@@ -89,6 +89,7 @@ class PopupController {
     
     // 載入狀態並初始化界面
     async loadStateAndInitialize() {
+        await this.clearAllState();
         await this.loadState();
         await this.loadExecutionProgress();
         this.renderCalendar();
@@ -215,6 +216,17 @@ class PopupController {
             }
         } catch (error) {
             console.error('載入執行進度失敗:', error);
+        }
+    }
+    
+    // 清空所有狀態
+    async clearAllState() {
+        try {
+            await chrome.runtime.sendMessage({
+                type: 'CLEAR_ALL_STATE'
+            });
+        } catch (error) {
+            console.error('清空狀態失敗:', error);
         }
     }
     

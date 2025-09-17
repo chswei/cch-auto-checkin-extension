@@ -28,6 +28,11 @@ class StateManager {
                     sendResponse({ success: true, data: progress });
                 });
                 return true;
+            } else if (message.type === 'CLEAR_ALL_STATE') {
+                this.clearAllState().then(() => {
+                    sendResponse({ success: true });
+                });
+                return true;
             }
         });
     }
@@ -65,6 +70,14 @@ class StateManager {
         } catch (error) {
             console.error('載入執行進度失敗:', error);
             return null;
+        }
+    }
+    
+    async clearAllState() {
+        try {
+            await chrome.storage.local.clear();
+        } catch (error) {
+            console.error('清空狀態失敗:', error);
         }
     }
 }
