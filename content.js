@@ -799,7 +799,7 @@ class AutoPunchInHandler {
                     nextMonthBtn.click();
                     // 智能等待日曆更新到下個月
                     await this.waitForCondition(() => {
-                        const dateButtons = document.querySelectorAll('button[aria-label*="2025/"]');
+                        const dateButtons = document.querySelectorAll(`button[aria-label*="${targetYear}/"]`);
                         return dateButtons.length > 0;
                     }, 2000, 100);
                 } else {
@@ -824,7 +824,7 @@ class AutoPunchInHandler {
             }
             
             // 查找對應的日期按鈕（使用 aria-label）
-            const dateButtons = document.querySelectorAll('button[aria-label*="2025/"]');
+            const dateButtons = document.querySelectorAll(`button[aria-label*="${targetYear}/"]`);
             let targetButton = null;
             
             for (const btn of dateButtons) {
