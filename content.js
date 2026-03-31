@@ -490,22 +490,39 @@ class AutoPunchInHandler {
         try {
             // 智能等待Angular Material表格載入完成
             const tableFound = await this.waitForCondition(() => {
-                const matRow = document.querySelector('mat-row');
-                return matRow !== null;
+                return document.querySelector('mat-row') !== null;
             }, 5000, 100);
             
             if (!tableFound) {
                 throw new Error('找不到打卡記錄表格');
             }
             
-            // 超高效查找：第 N 天 = Angular Material表格第 N 行的第一個按鈕
-            const editButton = document.querySelector(`mat-row:nth-child(${date}) button`);
+            // 根據日期 cell 內容比對，避免依賴 nth-child 位置
+            // mat-cell[1] 的格式為 "MM/DD"，例如 "03/01"
+            const allRows = document.querySelectorAll('mat-row');
+            let targetRow = null;
             
+            for (const row of allRows) {
+                const dateCell = row.querySelectorAll('mat-cell')[1];
+                if (dateCell) {
+                    const text = dateCell.textContent.trim();
+                    const match = text.match(/^(\d{2})\/(\d{2})$/);
+                    if (match && parseInt(match[2], 10) === date) {
+                        targetRow = row;
+                        break;
+                    }
+                }
+            }
+            
+            if (!targetRow) {
+                throw new Error(`找不到 ${date} 號的資料行`);
+            }
+            
+            const editButton = targetRow.querySelector('button');
             if (!editButton) {
                 throw new Error(`找不到第 ${date} 天的編輯按鈕`);
             }
             
-            // 成功找到編輯按鈕
             return editButton;
             
         } catch (error) {
