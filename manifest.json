@@ -29,7 +29,7 @@
   
   "web_accessible_resources": [
     {
-      "resources": ["utils.js", "dialog-override.js"],
+      "resources": ["dialog-override.js"],
       "matches": ["https://dpt.cch.org.tw/*"]
     }
   ],
