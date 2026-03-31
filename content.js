@@ -113,9 +113,6 @@ class AutoPunchInHandler {
         this.removeData = data;
         
         try {
-            // 初始延遲，確保頁面穩定
-            await this.sleep(1000);
-            
             for (let day = startDay; day <= endDay && this.checkRunning(); day++) {
                 this.currentIndex = day;
                 
@@ -170,9 +167,6 @@ class AutoPunchInHandler {
                 if (!this.checkRunning()) return;
                 
                 editButton.click();
-                
-                // 等待對話框完全載入
-                await this.sleep(1000);
                 
                 const dialog = await this.waitForDialogWithValidation(5000);
                 if (!dialog) {
@@ -245,7 +239,6 @@ class AutoPunchInHandler {
             // 檢查按鈕是否可點擊（有紀錄才能刪除）
             if (!deleteButton.disabled) {
                 deleteButton.click();
-                await this.sleep(100); // dialog-override.js 會自動處理確認對話框
                 this.logMessage(`成功刪除第 ${this.currentIndex} 天的打卡紀錄`, 'info');
             } else {
                 this.logMessage(`第 ${this.currentIndex} 天無打卡紀錄，跳過`, 'info');
@@ -276,7 +269,6 @@ class AutoPunchInHandler {
             
             // 先確保對話框被關閉
             await this.ensureDialogClosed();
-            await this.sleep(500); // 等待對話框完全關閉
             
             if (this.currentMode === 'autofill' && this.workDays && this.workDays.length > 0) {
                 // 先顯示當前進度
@@ -391,9 +383,6 @@ class AutoPunchInHandler {
         this.currentMode = 'autofill';
         
         try {
-            // 初始延遲，確保頁面穩定
-            await this.sleep(1000);
-            
             for (let i = 0; i < this.workDays.length && this.checkRunning(); i++) {
                 this.currentIndex = i;
                 const workDay = this.workDays[i];
@@ -449,9 +438,6 @@ class AutoPunchInHandler {
                 if (!this.checkRunning()) return;
                 
                 editButton.click();
-                
-                // 等待對話框完全載入
-                await this.sleep(1000);
                 
                 const dialog = await this.waitForDialogWithValidation(5000);
                 if (!dialog) {
@@ -572,8 +558,6 @@ class AutoPunchInHandler {
                 shiftSelect.value = shift;
                 shiftSelect.dispatchEvent(new Event('change', { bubbles: true }));
                 
-                // 成功選擇班別，等待選擇生效
-                await this.sleep(400);
                 return;
             }
             
@@ -588,7 +572,6 @@ class AutoPunchInHandler {
                 await this.selectDropdownValue(shiftCombobox, shiftName, '班別', 'combobox');
                 
                 this.logMessage(`成功選擇班別: ${shiftName}`, 'success');
-                await this.sleep(400);
                 return;
             } else {
                 // combobox 數量不足
@@ -607,7 +590,6 @@ class AutoPunchInHandler {
             // 如果是跨夜班別，需要先設定簽退日期
             if (isOvernight) {
                 await this.setCheckOutDate(dialog);
-                await this.sleep(200);
             }
             
             // 查找簽退時間的 mat-select 元素
@@ -621,7 +603,6 @@ class AutoPunchInHandler {
                 
                 // 設定簽退小時
                 await this.selectDropdownValue(hourSelect, timeSettings.hour, '簽退小時', 'matselect');
-                await this.sleep(200);
                 
                 // 設定簽退分鐘
                 await this.selectDropdownValue(minuteSelect, timeSettings.minute, '簽退分鐘', 'matselect');
@@ -657,7 +638,6 @@ class AutoPunchInHandler {
             
             // 點擊打開下拉選單
             this.clickDropdownTrigger(element, type);
-            await this.sleep(300);
             
             // 等待選項出現
             const options = await this.waitForOptions(type);
@@ -671,8 +651,6 @@ class AutoPunchInHandler {
                 const availableOptions = options.map(opt => opt.textContent?.trim() || '').filter(text => text).join(', ');
                 throw new Error(`${fieldName}: 找不到值 "${value}"。可用選項: [${availableOptions}]`);
             }
-            
-            await this.sleep(150);
             
         } catch (error) {
             this.logMessage(`${fieldName}: 設定失敗: ${error.message}`, 'error');
@@ -747,7 +725,6 @@ class AutoPunchInHandler {
             const checkOutCalendarButton = calendarButtons[1]; // 第二個是簽退日期
             // 點擊簽退日期日曆按鈕
             checkOutCalendarButton.click();
-            await this.sleep(200);
             
             // 智能等待日曆展開
             await this.waitForCondition(() => {
@@ -833,7 +810,11 @@ class AutoPunchInHandler {
                             btn.querySelector('mat-icon, [class*="arrow"], [class*="chevron"]')) {
                             // 嘗試點擊可能的下個月按鈕
                             btn.click();
-                            await this.sleep(1000);
+                            // 等待日曆更新到目標月
+                            await this.waitForCondition(() => {
+                                const dateButtons = document.querySelectorAll(`button[aria-label*="${targetYear}/"]`);
+                                return dateButtons.length > 0;
+                            }, 2000, 100);
                             break;
                         }
                     }
@@ -866,7 +847,10 @@ class AutoPunchInHandler {
             if (targetButton) {
                 // 點擊隔日日期
                 targetButton.click();
-                await this.sleep(200);
+                // 等待日曆關閉
+                await this.waitForCondition(() => {
+                    return !document.querySelector('mat-calendar');
+                }, 2000, 50);
             } else {
                 throw new Error(`找不到隔日日期按鈕: ${targetDate}`);
             }
@@ -890,8 +874,11 @@ class AutoPunchInHandler {
                     const hasSelects = dialog.querySelectorAll('select, [role="combobox"]').length > 0;
                     
                     if ((hasTitle || hasContent) && hasSelects) {
-                        // 對話框已出現，再等待一下確保所有元素載入完成
-                        await this.sleep(500);
+                        // 等待班別 select 完全就緒（有選項）再回傳
+                        await this.waitForCondition(() => {
+                            const banBie = dialog.querySelector('select[aria-label="班別"]');
+                            return banBie ? banBie.options.length > 0 : true;
+                        }, 2000, 50);
                         return dialog;
                     }
                 }
@@ -930,7 +917,9 @@ class AutoPunchInHandler {
             } else {
                 document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
             }
-            await this.sleep(800);
+            await this.waitForCondition(() => {
+                return !document.querySelector('mat-dialog-container');
+            }, 2000, 50);
         }
     }
     
@@ -980,9 +969,6 @@ class AutoPunchInHandler {
             
             // 點擊對話框內的送出按鈕提交打卡資料
             submitButton.click();
-            
-            // 等待確認對話框出現並自動處理（dialog-override.js 會立即處理）
-            await this.sleep(100);
             
         } catch (error) {
             this.logMessage(`提交表單失敗: ${error.message}`, 'error');
